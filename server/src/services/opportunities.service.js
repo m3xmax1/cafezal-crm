@@ -12,8 +12,9 @@ function httpError(message, status) {
 /** Restrict a select query to what the user is allowed to see. */
 function applyScope(query, user) {
   if (user.isAdmin) return query;
-  // A known commercial only sees their own rows.
-  return query.eq('commerciale_assegnato', user.commerciale);
+  // A commercial sees their own rows + the shared pool (unassigned leads),
+  // so they can pick leads from the pool and claim them for themselves.
+  return query.or(`commerciale_assegnato.eq.${user.commerciale},commerciale_assegnato.is.null`);
 }
 
 export async function listOpportunities(user, filters = {}) {
@@ -47,7 +48,9 @@ export async function getOpportunity(user, id) {
   const { data, error } = await db.from(TABLE).select('*').eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  if (!user.isAdmin && data.commerciale_assegnato !== user.commerciale) {
+  // Non-admins may access their own rows and unassigned (shared-pool) ones,
+  // but never rows already owned by another commercial.
+  if (!user.isAdmin && data.commerciale_assegnato && data.commerciale_assegnato !== user.commerciale) {
     throw httpError('Forbidden', 403);
   }
   return data;
@@ -87,6 +90,10 @@ export async function updateOpportunity(user, id, payload) {
 export async function deleteOpportunity(user, id) {
   const existing = await getOpportunity(user, id);
   if (!existing) return false;
+  // A commercial may delete only opportunities they own — never shared-pool ones.
+  if (!user.isAdmin && existing.commerciale_assegnato !== user.commerciale) {
+    throw httpError('Forbidden', 403);
+  }
   const { error } = await db.from(TABLE).delete().eq('id', id);
   if (error) throw error;
   return true;

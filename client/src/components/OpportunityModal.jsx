@@ -87,6 +87,20 @@ export default function OpportunityModal({
     }
   }
 
+  // Claim an unassigned (shared-pool) lead → assign it to the current commercial.
+  async function handleClaim() {
+    setSaving(true);
+    setError('');
+    try {
+      await onSave({ commerciale_assegnato: defaultCommerciale }, opp.id);
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const field =
     'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500';
   const label = 'mb-1 block text-sm font-medium text-slate-700';
@@ -140,11 +154,37 @@ export default function OpportunityModal({
                     </option>
                   ))}
                 </select>
-              ) : (
-                // Non-admin commercials can only own their opportunities.
+              ) : form.commerciale_assegnato ? (
+                // Already owned by this commercial → read-only.
                 <input
                   className={`${field} bg-slate-50 text-slate-500`}
-                  value={form.commerciale_assegnato || '— Non assegnato —'}
+                  value={form.commerciale_assegnato}
+                  disabled
+                  readOnly
+                />
+              ) : isEdit ? (
+                // Unassigned lead from the shared pool → let the commercial claim it.
+                <div className="flex items-center gap-2">
+                  <input
+                    className={`${field} bg-slate-50 text-slate-400`}
+                    value="— Pool (non assegnato) —"
+                    disabled
+                    readOnly
+                  />
+                  <button
+                    type="button"
+                    onClick={handleClaim}
+                    disabled={saving}
+                    className="shrink-0 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+                  >
+                    {saving ? '…' : 'Prendi in carico'}
+                  </button>
+                </div>
+              ) : (
+                // New opportunity created by a commercial → it will belong to them.
+                <input
+                  className={`${field} bg-slate-50 text-slate-500`}
+                  value={`${defaultCommerciale} (tu)`}
                   disabled
                   readOnly
                 />

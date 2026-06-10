@@ -69,7 +69,13 @@ export default function OpportunityCard({ opp, onClick }) {
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-        {opp.commerciale_assegnato && <span>👤 {opp.commerciale_assegnato}</span>}
+        {opp.commerciale_assegnato ? (
+          <span>👤 {opp.commerciale_assegnato}</span>
+        ) : (
+          <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">
+            🆕 Pool
+          </span>
+        )}
         {opp.macchina && <span>⚙️ Macchina</span>}
         {opp.quantita_minima_kg != null && <span>📦 {opp.quantita_minima_kg} kg</span>}
       </div>
