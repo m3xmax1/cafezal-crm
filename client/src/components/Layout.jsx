@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function Layout({ children, right }) {
@@ -9,7 +10,7 @@ export default function Layout({ children, right }) {
     <div className="flex min-h-full flex-col">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
-          <div className="flex items-center gap-2.5">
+          <Link to="/" className="flex items-center gap-2.5">
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-900 text-sm font-bold tracking-tight text-white shadow-sm">
               C
             </div>
@@ -17,11 +18,16 @@ export default function Layout({ children, right }) {
               <h1 className="text-[15px] font-bold tracking-tight text-slate-900">Cafezal CRM</h1>
               <p className="text-xs text-slate-500">Pipeline vendite</p>
             </div>
-          </div>
+          </Link>
 
           <div className="flex items-center gap-2 sm:gap-3">
             {right}
-            <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white py-1 pl-1 pr-3 sm:flex">
+            {/* Desktop: user chip → profile */}
+            <Link
+              to="/profilo"
+              title="Profilo"
+              className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white py-1 pl-1 pr-3 transition-colors hover:bg-slate-50 sm:flex"
+            >
               <div className="grid h-7 w-7 place-items-center rounded-full bg-blue-600 text-xs font-semibold text-white">
                 {initial}
               </div>
@@ -31,7 +37,16 @@ export default function Layout({ children, right }) {
                   {isAdmin ? 'Admin' : 'Commerciale'}
                 </div>
               </div>
-            </div>
+            </Link>
+            {/* Mobile: avatar → profile */}
+            <Link
+              to="/profilo"
+              title="Profilo"
+              aria-label="Profilo"
+              className="grid h-9 w-9 place-items-center rounded-full bg-blue-600 text-sm font-semibold text-white sm:hidden"
+            >
+              {initial}
+            </Link>
             <button
               onClick={signOut}
               title="Esci"

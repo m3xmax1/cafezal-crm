@@ -61,6 +61,8 @@ export function AuthProvider({ children }) {
     isAdmin: profile ? profile.isAdmin : fallbackAdmin,
     signIn: (e, p) => supabase.auth.signInWithPassword({ email: e, password: p }),
     signOut: () => supabase.auth.signOut(),
+    // Update the logged-in user's password (Supabase Auth).
+    updatePassword: (password) => supabase.auth.updateUser({ password }),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

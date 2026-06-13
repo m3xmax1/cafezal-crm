@@ -23,7 +23,9 @@ export const config = {
   clientOrigin: process.env.CLIENT_ORIGIN || '*',
 
   // Comma-separated list of admin emails (see everything).
-  adminEmails: (process.env.ADMIN_EMAILS || '')
+  // Defaults to admin@cafezal.com so the admin account works out of the box even
+  // if the ADMIN_EMAILS env var was never set on the deployment.
+  adminEmails: (process.env.ADMIN_EMAILS || 'admin@cafezal.com')
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),

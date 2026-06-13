@@ -17,34 +17,58 @@ function applyScope(query, user) {
   return query.or(`commerciale_assegnato.eq.${user.commerciale},commerciale_assegnato.is.null`);
 }
 
+// Supabase/PostgREST returns at most ~1000 rows per request. To load the full
+// dataset (~1900+ leads) we page through it in chunks and concatenate, so the
+// board, search and the "Totale" stat reflect every lead — not just the first 1000.
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 25; // safety cap (25k rows)
+
+async function fetchAllRows(buildQuery) {
+  const all = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const from = page * PAGE_SIZE;
+    const { data, error } = await buildQuery().range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break; // last page reached
+  }
+  return all;
+}
+
 export async function listOpportunities(user, filters = {}) {
   // Not admin and not a known commercial → no visibility.
   if (!user.isAdmin && !user.commerciale) return [];
 
-  let query = db
-    .from(TABLE)
-    .select('*')
-    .order('data_ultima_modifica', { ascending: false });
+  // A fresh query must be built per page (a query builder can be awaited only
+  // once). A stable *total* order — note the `id` tiebreaker — is required so
+  // pagination never skips or duplicates rows when many share a timestamp.
+  const buildQuery = () => {
+    let query = db
+      .from(TABLE)
+      .select('*')
+      .order('data_ultima_modifica', { ascending: false, nullsFirst: false })
+      .order('id', { ascending: true });
 
-  query = applyScope(query, user);
+    query = applyScope(query, user);
 
-  // The commerciale filter only matters for admins (commercials are already scoped).
-  if (user.isAdmin && filters.commerciale && COMMERCIALI.includes(filters.commerciale)) {
-    query = query.eq('commerciale_assegnato', filters.commerciale);
-  }
-  if (filters.fase && FASI.includes(filters.fase)) {
-    query = query.eq('fase_pipeline', filters.fase);
-  }
-  if (filters.sensibility && SENSIBILITY.includes(filters.sensibility)) {
-    query = query.eq('sensibility', filters.sensibility);
-  }
-  if (filters.categoria && CATEGORIE.includes(filters.categoria)) {
-    query = query.eq('categoria', filters.categoria);
-  }
+    // The commerciale filter only matters for admins (commercials are already scoped).
+    if (user.isAdmin && filters.commerciale && COMMERCIALI.includes(filters.commerciale)) {
+      query = query.eq('commerciale_assegnato', filters.commerciale);
+    }
+    if (filters.fase && FASI.includes(filters.fase)) {
+      query = query.eq('fase_pipeline', filters.fase);
+    }
+    if (filters.sensibility && SENSIBILITY.includes(filters.sensibility)) {
+      query = query.eq('sensibility', filters.sensibility);
+    }
+    if (filters.categoria && CATEGORIE.includes(filters.categoria)) {
+      query = query.eq('categoria', filters.categoria);
+    }
+    return query;
+  };
 
-  const { data, error } = await query;
-  if (error) throw error;
-  return data;
+  return fetchAllRows(buildQuery);
 }
 
 export async function getOpportunity(user, id) {
