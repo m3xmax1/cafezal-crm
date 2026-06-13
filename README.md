@@ -120,15 +120,18 @@ Apri **http://localhost:5173**, accedi con uno dei 3 account.
 - Login **email/password** via Supabase Auth (gestito dal frontend).
 - Il frontend invia il JWT Supabase nell'header `Authorization: Bearer <token>`;
   l'API Express lo verifica ad ogni richiesta.
-- **Visibilità**: ogni commerciale vede **solo le proprie** opportunità.
-  Un **admin** (email in `ADMIN_EMAILS`) vede **tutto** e può filtrare per commerciale.
-- Mappatura identità → commerciale (in `server/src/lib/constants.js` e lato client):
+- **Visibilità (pool condiviso)**: ogni commerciale vede **le proprie** opportunità
+  **+ il pool** (lead non assegnati), e può **prendersele in carico** dalla modale
+  ("Prendi in carico"). Non vede i lead già di un altro commerciale.
+  Un **admin** (email in `ADMIN_EMAILS`, default `admin@cafezal.com`) vede **tutto**.
+- Mappatura identità → commerciale (in `server/src/lib/constants.js` e lato client).
+  Login con l'account `@cafezal.com` *oppure* con l'indirizzo reale `@cafezal.it`:
 
-  | Email                  | Commerciale |
-  | ---------------------- | ----------- |
-  | laura@cafezal.com      | Laura       |
-  | massimo@cafezal.com    | Massimo     |
-  | gabriele@cafezal.com   | Gabriele    |
+  | Login (.com / .it)                    | Commerciale | Reminder inviato a       |
+  | ------------------------------------- | ----------- | ------------------------ |
+  | laura@cafezal.com / laura@cafezal.it  | Laura       | laura@cafezal.it *(placeholder)* |
+  | massimo@cafezal.com / m.rotunno@cafezal.it | Massimo | m.rotunno@cafezal.it     |
+  | gabriele@cafezal.com / sales@cafezal.it | Gabriele  | sales@cafezal.it         |
 
 L'autorizzazione è applicata **lato server** (service role + controlli di scope).
 `supabase/rls.sql` aggiunge protezione anche a livello DB (opzionale).
@@ -165,6 +168,57 @@ curl -X POST http://localhost:4000/api/cron/daily-reminder \
 > Senza `SMTP_HOST` configurato, le email vengono **loggate in console** invece di
 > essere inviate — comodo per provare in locale.
 
+### ✉️ Attivazione email reali in produzione (Vercel)
+
+Reminder giornaliero **e** report mensile vengono **inviati davvero** solo quando il
+backend ha le variabili SMTP. Mittente sempre **`m.rotunno@cafezal.it`** (Google Workspace).
+
+Sul progetto Vercel del **backend** → **Settings → Environment Variables**:
+
+| Variabile     | Valore                                  |
+| ------------- | --------------------------------------- |
+| `SMTP_HOST`   | `smtp.gmail.com`                        |
+| `SMTP_PORT`   | `587`                                   |
+| `SMTP_SECURE` | `false`                                 |
+| `SMTP_USER`   | `m.rotunno@cafezal.it`                  |
+| `SMTP_PASS`   | *App Password Google* (segna **Sensitive**) |
+| `MAIL_FROM`   | `Cafezal CRM <m.rotunno@cafezal.it>`    |
+| `CRON_SECRET` | *stringa casuale* (consigliata)         |
+
+**App Password Google** (per `SMTP_PASS`):
+
+1. L'account `m.rotunno@cafezal.it` deve avere la **verifica in 2 passaggi** attiva.
+2. Vai su <https://myaccount.google.com/apppasswords>, crea una password per l'app "Mail".
+3. Incolla le 16 cifre (senza spazi) in `SMTP_PASS`.
+
+Poi **Redeploy** del backend. Destinatari reminder: Laura → `laura@cafezal.it` (placeholder),
+Massimo → `m.rotunno@cafezal.it`, Gabriele → `sales@cafezal.it`.
+
+---
+
+## 📈 Report mensile
+
+Il **1° di ogni mese** (Vercel Cron `0 7 1 * *` ≈ 09:00 ITA) viene inviato a
+**`carlos@cafezal.it`** (`REPORT_TO`) un report sintetico del mese precedente:
+
+- quadro generale (totale lead, pool, assegnati, attivi, chiusi, K.O.);
+- tabella **per commerciale** (assegnati, attivi, chiusi, K.O., lavorati nel mese, win rate);
+- pipeline per fase e top categorie.
+
+Test manuale: `GET /api/cron/monthly-report` (protetto da `CRON_SECRET`).
+
+---
+
+## 📥 Import CSV in-app (admin)
+
+L'admin può importare lead dal pulsante **Importa** in dashboard (`POST /api/opportunities/import`):
+
+- intestazioni riconosciute (1ª riga): **Azienda** (obbligatoria), Categoria, Commerciale,
+  Fase, Sensibility, Kg, Scadenza, Note, Macchina;
+- separatore virgola o punto e virgola, valori con virgolette gestiti;
+- valori non validi normalizzati (es. fase → `Lead`), lead senza commerciale → **pool**;
+- opzione **salta duplicati** per nome azienda.
+
 ---
 
 ## 🔌 API REST
@@ -176,12 +230,14 @@ richiedono `Authorization: Bearer <supabase_jwt>`.
 | ------ | ----------------------------- | -------------------------------------------- |
 | GET    | `/health`                     | Healthcheck                                  |
 | GET    | `/me`                         | Profilo: `{ email, commerciale, isAdmin }`   |
-| GET    | `/opportunities`              | Lista (scoped). Query: `commerciale`, `fase`, `sensibility` |
+| GET    | `/opportunities`              | Lista (scoped, **tutte** le righe via paginazione). Query: `commerciale`, `categoria`, `fase`, `sensibility` |
 | POST   | `/opportunities`              | Crea opportunità                             |
+| POST   | `/opportunities/import`       | **Import CSV massivo (solo admin)**          |
 | GET    | `/opportunities/:id`          | Dettaglio                                    |
 | PATCH  | `/opportunities/:id`          | Aggiorna (parziale)                          |
 | DELETE | `/opportunities/:id`          | Elimina                                      |
 | POST/GET | `/cron/daily-reminder`      | Esegue il job reminder (protetto da `CRON_SECRET`) |
+| POST/GET | `/cron/monthly-report`      | Report mensile a `carlos@cafezal.it` (protetto da `CRON_SECRET`) |
 
 Esempio creazione:
 
@@ -228,10 +284,16 @@ Server Express persistente → lo scheduler `node-cron` gira nativo, orario esat
 - **Dashboard kanban** con 6 colonne (Lead → Contattato → In trattativa → Proposta →
   Chiuso / K.O.) e **drag & drop** (mouse + touch) per spostare le opportunità di fase.
 - **CRUD** completo via modale (crea, modifica, elimina).
-- **Filtri** per commerciale (admin), fase e sensibility.
-- **Assegnazione** tramite dropdown Laura / Massimo / Gabriele.
-- **Badge** sensibility, indicatore scadenza (oggi / tra X giorni / scaduta).
-- **UI responsive** mobile (modale bottom-sheet, board scrollabile).
+- **Pool condiviso**: lead non assegnati visibili a tutti, con "Prendi in carico".
+- **Categorie** lead (Hotel, Caffè/Bakery IT/Estero, Ristoranti, Agenzie, Startup,
+  Corporate, Moda/Design, Meta Lead) con **tag colorato** e filtro dedicato.
+- **Ricerca** per azienda + **stat strip** (totale, pool, assegnati, conclusi) sui
+  **~1.900 lead** reali (paginazione oltre il limite 1000 di PostgREST).
+- **Filtri** per commerciale (admin), categoria, fase e sensibility.
+- **Profilo personale** con **cambio password** (`/profilo`).
+- **Import CSV in-app** (admin) e **report mensile** automatico al management.
+- **Reminder email** giornaliero per ogni commerciale.
+- **Badge** sensibility, indicatore scadenza, **UI responsive/mobile** (bottom-sheet).
 
 ---
 
