@@ -27,14 +27,11 @@ const IconBox = (props) => (
   </svg>
 );
 
-export default function OpportunityCard({ opp, onClick }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: opp.id });
-  const downPos = useRef(null);
+const BASE_CARD =
+  'rounded-xl border border-slate-200 bg-white p-3 shadow-card transition-all duration-200 hover:border-slate-300 hover:shadow-card-hover';
 
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
-    : undefined;
-
+// Inner content shared by the draggable (desktop) and static (mobile) cards.
+function CardBody({ opp }) {
   const d = daysUntil(opp.data_scadenza);
   const dueLabel =
     d === null ? null : d < 0 ? `Scaduta da ${Math.abs(d)}g` : d === 0 ? 'Scade oggi' : `Tra ${d}g`;
@@ -43,31 +40,10 @@ export default function OpportunityCard({ opp, onClick }) {
 
   const fu = followupStatus(opp.data_prossimo_followup);
   const needsPlan =
-    !opp.data_prossimo_followup &&
-    opp.commerciale_assegnato &&
-    !CLOSED_FASI.includes(opp.fase_pipeline);
-
-  function handlePointerDownCapture(e) {
-    downPos.current = { x: e.clientX, y: e.clientY };
-  }
-  function handleClick(e) {
-    const p = downPos.current;
-    if (p && (Math.abs(e.clientX - p.x) > 8 || Math.abs(e.clientY - p.y) > 8)) return;
-    onClick?.();
-  }
+    !opp.data_prossimo_followup && opp.commerciale_assegnato && !CLOSED_FASI.includes(opp.fase_pipeline);
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      onPointerDownCapture={handlePointerDownCapture}
-      onClick={handleClick}
-      className={`group cursor-grab touch-none select-none rounded-xl border border-slate-200 bg-white p-3 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover active:cursor-grabbing ${
-        isDragging ? 'opacity-60 shadow-card-hover' : ''
-      }`}
-    >
+    <>
       <div className="mb-1.5 flex items-center justify-between gap-2">
         {opp.categoria ? (
           <span
@@ -130,6 +106,53 @@ export default function OpportunityCard({ opp, onClick }) {
           {dueLabel}
         </div>
       )}
+    </>
+  );
+}
+
+// Static, fully scrollable card for the mobile list (no drag → touch scrolls).
+export function OpportunityCardStatic({ opp, onClick }) {
+  return (
+    <div
+      onClick={onClick}
+      className={`${BASE_CARD} cursor-pointer active:scale-[0.99]`}
+    >
+      <CardBody opp={opp} />
+    </div>
+  );
+}
+
+// Draggable card for the desktop kanban board.
+export default function OpportunityCard({ opp, onClick }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: opp.id });
+  const downPos = useRef(null);
+
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    : undefined;
+
+  function handlePointerDownCapture(e) {
+    downPos.current = { x: e.clientX, y: e.clientY };
+  }
+  function handleClick(e) {
+    const p = downPos.current;
+    if (p && (Math.abs(e.clientX - p.x) > 8 || Math.abs(e.clientY - p.y) > 8)) return;
+    onClick?.();
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      onPointerDownCapture={handlePointerDownCapture}
+      onClick={handleClick}
+      className={`${BASE_CARD} group cursor-grab touch-none select-none hover:-translate-y-0.5 active:cursor-grabbing ${
+        isDragging ? 'opacity-60 shadow-card-hover' : ''
+      }`}
+    >
+      <CardBody opp={opp} />
     </div>
   );
 }

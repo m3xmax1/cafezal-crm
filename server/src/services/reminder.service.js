@@ -1,11 +1,6 @@
 import { db } from '../config/supabase.js';
 import { config } from '../config/env.js';
-import {
-  COMMERCIALI,
-  COMMERCIALE_TO_EMAIL,
-  CLOSED_FASI,
-  FASI,
-} from '../lib/constants.js';
+import { COMMERCIALI, COMMERCIALE_TO_EMAIL, CLOSED_FASI, FASI } from '../lib/constants.js';
 import { buildReminderEmail } from '../lib/emailTemplate.js';
 import { sendMail } from '../lib/mailer.js';
 
@@ -27,13 +22,34 @@ function addDaysISO(iso, days) {
   return dt.toISOString().slice(0, 10);
 }
 
+/** All leads of a commercial (paged past the 1000-row limit). */
+async function fetchCommercialLeads(commerciale) {
+  const all = [];
+  for (let p = 0; p < 25; p++) {
+    const from = p * 1000;
+    const { data, error } = await db
+      .from('opportunities')
+      .select(
+        'azienda, fase_pipeline, prossima_azione, data_prossimo_followup, referente, telefono, categoria',
+      )
+      .eq('commerciale_assegnato', commerciale)
+      .order('data_prossimo_followup', { ascending: true, nullsFirst: false })
+      .order('id', { ascending: true })
+      .range(from, from + 999);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < 1000) break;
+  }
+  return all;
+}
+
 /**
- * For each commercial, find opportunities due within REMINDER_DAYS_AHEAD days
- * (excluding finalized phases), build a per-phase recap, and email them.
+ * For each commercial, build a "guided" daily recap based on FOLLOW-UPS:
+ * overdue, due today, upcoming (within REMINDER_DAYS_AHEAD), a nudge for leads
+ * with no next step ("da pianificare"), and a per-phase pipeline recap.
  */
 export async function runDailyReminders(options = {}) {
-  // When overrideTo is set (test mode), every email is redirected to that single
-  // address instead of the real commercials — handy to verify SMTP without spamming.
   const overrideTo = options.overrideTo || null;
   const today = todayISO();
   const until = addDaysISO(today, config.cron.daysAhead);
@@ -41,53 +57,62 @@ export async function runDailyReminders(options = {}) {
 
   for (const commerciale of COMMERCIALI) {
     const to = overrideTo || COMMERCIALE_TO_EMAIL[commerciale];
+    const leads = await fetchCommercialLeads(commerciale);
 
-    // Opportunities due in the window.
-    const { data: dueRaw, error: dueErr } = await db
-      .from('opportunities')
-      .select('*')
-      .eq('commerciale_assegnato', commerciale)
-      .gte('data_scadenza', today)
-      .lte('data_scadenza', until)
-      .order('data_scadenza', { ascending: true });
-    if (dueErr) throw dueErr;
-    const due = (dueRaw || []).filter((o) => !CLOSED_FASI.includes(o.fase_pipeline));
+    const open = leads.filter((l) => !CLOSED_FASI.includes(l.fase_pipeline));
+    const overdue = [];
+    const dueToday = [];
+    const upcoming = [];
+    let daPianificare = 0;
 
-    // Per-phase recap across all of this commercial's opportunities.
-    const { data: all, error: allErr } = await db
-      .from('opportunities')
-      .select('fase_pipeline')
-      .eq('commerciale_assegnato', commerciale);
-    if (allErr) throw allErr;
-
-    const recap = Object.fromEntries(FASI.map((f) => [f, 0]));
-    for (const row of all || []) {
-      recap[row.fase_pipeline] = (recap[row.fase_pipeline] || 0) + 1;
+    for (const l of open) {
+      const f = (l.data_prossimo_followup || '').slice(0, 10);
+      if (!f) {
+        daPianificare += 1;
+      } else if (f < today) {
+        overdue.push(l);
+      } else if (f === today) {
+        dueToday.push(l);
+      } else if (f <= until) {
+        upcoming.push(l);
+      }
     }
-    const openCount =
-      (all?.length || 0) - (recap['Chiuso'] || 0) - (recap['K.O.'] || 0);
 
-    // Skip people with nothing relevant to report.
-    if (due.length === 0 && openCount === 0) {
-      results.push({ commerciale, to, sent: false, reason: 'no due items / no open pipeline' });
+    const recap = Object.fromEntries(FASI.map((ph) => [ph, 0]));
+    for (const l of leads) recap[l.fase_pipeline] = (recap[l.fase_pipeline] || 0) + 1;
+
+    const actionable = overdue.length + dueToday.length + upcoming.length + daPianificare;
+    if (actionable === 0) {
+      results.push({ commerciale, to, sent: false, reason: 'niente da fare' });
       continue;
     }
 
     const html = buildReminderEmail({
       commerciale,
-      due,
-      recap,
-      daysAhead: config.cron.daysAhead,
       today,
+      daysAhead: config.cron.daysAhead,
+      overdue,
+      dueToday,
+      upcoming,
+      daPianificare,
+      recap,
     });
 
     const subject = overrideTo
-      ? `[TEST] Recap Giornaliero - Cafezal CRM (${commerciale})`
-      : 'Recap Giornaliero - Cafezal CRM';
+      ? `[TEST] La tua giornata - Cafezal CRM (${commerciale})`
+      : 'La tua giornata - Cafezal CRM';
 
     try {
       await sendMail({ to, subject, html });
-      results.push({ commerciale, to, sent: true, dueCount: due.length });
+      results.push({
+        commerciale,
+        to,
+        sent: true,
+        overdue: overdue.length,
+        today: dueToday.length,
+        upcoming: upcoming.length,
+        daPianificare,
+      });
     } catch (err) {
       results.push({ commerciale, to, sent: false, error: err.message });
     }

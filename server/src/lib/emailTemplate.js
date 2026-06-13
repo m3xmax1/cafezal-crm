@@ -1,7 +1,5 @@
 import { FASI } from './constants.js';
 
-const SENS_COLOR = { low: '#16a34a', mid: '#d97706', high: '#dc2626' };
-
 function fmtDate(d) {
   if (!d) return '—';
   const [y, m, day] = String(d).split('-');
@@ -18,27 +16,89 @@ function escapeHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
+function daysBetween(fromISO, toISO) {
+  const a = new Date(`${fromISO}T00:00:00Z`);
+  const b = new Date(`${toISO}T00:00:00Z`);
+  return Math.round((b - a) / 86400000);
+}
+
+function relLabel(followupISO, todayISO) {
+  const d = daysBetween(todayISO, followupISO);
+  if (d < 0) return d === -1 ? 'ieri' : `${Math.abs(d)} g fa`;
+  if (d === 0) return 'oggi';
+  if (d === 1) return 'domani';
+  return `tra ${d} g`;
+}
+
+/** A table of follow-up rows: azienda · prossima azione · contatto · data. */
+function followupTable(rows, todayISO, accent) {
+  const body = rows
+    .map(
+      (o) => `
+      <tr>
+        <td style="padding:9px 10px;border-bottom:1px solid #eef2f7;">
+          <div style="font-weight:600;color:#0f172a;">${escapeHtml(o.azienda)}</div>
+          ${o.prossima_azione ? `<div style="color:#475569;font-size:13px;">${escapeHtml(o.prossima_azione)}</div>` : ''}
+          ${
+            o.referente || o.telefono
+              ? `<div style="color:#94a3b8;font-size:12px;">${escapeHtml(o.referente || '')}${o.referente && o.telefono ? ' · ' : ''}${escapeHtml(o.telefono || '')}</div>`
+              : ''
+          }
+        </td>
+        <td style="padding:9px 10px;border-bottom:1px solid #eef2f7;text-align:right;white-space:nowrap;">
+          <div style="font-weight:600;color:${accent};">${relLabel(o.data_prossimo_followup, todayISO)}</div>
+          <div style="color:#94a3b8;font-size:12px;">${fmtDate(o.data_prossimo_followup)}</div>
+        </td>
+      </tr>`,
+    )
+    .join('');
+  return `<table style="width:100%;border-collapse:collapse;font-size:14px;"><tbody>${body}</tbody></table>`;
+}
+
+function sectionTitle(emoji, text, color) {
+  return `<h2 style="font-size:15px;margin:22px 0 8px;color:${color};">${emoji} ${escapeHtml(text)}</h2>`;
+}
+
 /**
- * Build the daily recap email (inline CSS for max email-client compatibility).
- * @param {{commerciale:string, due:Array, recap:Object, daysAhead:number, today:string}} p
+ * Guided daily recap email (inline CSS for email-client compatibility).
+ * @param {{commerciale:string, today:string, daysAhead:number,
+ *          overdue:Array, dueToday:Array, upcoming:Array, daPianificare:number, recap:Object}} p
  */
-export function buildReminderEmail({ commerciale, due = [], recap = {}, daysAhead = 3, today }) {
-  const dueRows = due.length
-    ? due
-        .map(
-          (o) => `
-        <tr>
-          <td style="padding:8px 10px;border-bottom:1px solid #eee;">${escapeHtml(o.azienda)}</td>
-          <td style="padding:8px 10px;border-bottom:1px solid #eee;">${escapeHtml(o.fase_pipeline)}</td>
-          <td style="padding:8px 10px;border-bottom:1px solid #eee;">
-            <span style="color:#fff;background:${SENS_COLOR[o.sensibility] || '#6b7280'};padding:2px 8px;border-radius:9999px;font-size:12px;">${escapeHtml(o.sensibility)}</span>
-          </td>
-          <td style="padding:8px 10px;border-bottom:1px solid #eee;">${o.quantita_minima_kg ?? '—'}</td>
-          <td style="padding:8px 10px;border-bottom:1px solid #eee;font-weight:600;color:#b91c1c;">${fmtDate(o.data_scadenza)}</td>
-        </tr>`,
-        )
-        .join('')
-    : `<tr><td colspan="5" style="padding:14px 10px;color:#6b7280;">Nessuna opportunità in scadenza nei prossimi ${daysAhead} giorni 🎉</td></tr>`;
+export function buildReminderEmail({
+  commerciale,
+  today,
+  daysAhead = 3,
+  overdue = [],
+  dueToday = [],
+  upcoming = [],
+  daPianificare = 0,
+  recap = {},
+}) {
+  const chip = (label, n, bg, fg) =>
+    `<span style="display:inline-block;background:${bg};color:${fg};border-radius:9999px;padding:3px 10px;font-size:13px;font-weight:600;margin-right:6px;">${n} ${label}</span>`;
+
+  const summary = `
+    <div style="margin:0 0 4px;">
+      ${overdue.length ? chip('in ritardo', overdue.length, '#fee2e2', '#b91c1c') : ''}
+      ${dueToday.length ? chip('oggi', dueToday.length, '#fef3c7', '#b45309') : ''}
+      ${upcoming.length ? chip(`entro ${daysAhead}g`, upcoming.length, '#dbeafe', '#1d4ed8') : ''}
+      ${daPianificare ? chip('da pianificare', daPianificare, '#f1f5f9', '#475569') : ''}
+    </div>`;
+
+  const overdueBlock = overdue.length
+    ? sectionTitle('🔴', 'Follow-up in ritardo', '#b91c1c') + followupTable(overdue, today, '#b91c1c')
+    : '';
+  const todayBlock = dueToday.length
+    ? sectionTitle('🟡', 'Da fare oggi', '#b45309') + followupTable(dueToday, today, '#b45309')
+    : '';
+  const upcomingBlock = upcoming.length
+    ? sectionTitle('🔵', `In arrivo (prossimi ${daysAhead} giorni)`, '#1d4ed8') + followupTable(upcoming, today, '#1d4ed8')
+    : '';
+  const planBlock = daPianificare
+    ? `<div style="margin-top:18px;padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;font-size:14px;color:#334155;">
+         ⚪ Hai <strong>${daPianificare}</strong> lead presi in carico <strong>senza una prossima azione</strong>. Apri il CRM e fissa il prossimo passo per non perderli di vista.
+       </div>`
+    : '';
 
   const recapRows = FASI.map(
     (f) => `
@@ -48,31 +108,27 @@ export function buildReminderEmail({ commerciale, due = [], recap = {}, daysAhea
       </tr>`,
   ).join('');
 
+  const allClear =
+    !overdue.length && !dueToday.length && !upcoming.length && !daPianificare
+      ? `<p style="color:#16a34a;font-size:14px;">Tutto in ordine: nessun follow-up in scadenza 🎉</p>`
+      : '';
+
   return `
   <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:640px;margin:0 auto;color:#0f172a;">
-    <div style="background:#1e293b;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0;">
-      <h1 style="margin:0;font-size:20px;">☕ Cafezal CRM — Recap Giornaliero</h1>
-      <p style="margin:6px 0 0;color:#cbd5e1;font-size:14px;">Ciao ${escapeHtml(commerciale)}, ecco il tuo riepilogo del ${fmtDate(today)}.</p>
+    <div style="background:#0f172a;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0;">
+      <h1 style="margin:0;font-size:20px;">☕ Cafezal CRM — La tua giornata</h1>
+      <p style="margin:6px 0 0;color:#cbd5e1;font-size:14px;">Ciao ${escapeHtml(commerciale)}, ecco i follow-up del ${fmtDate(today)}.</p>
     </div>
     <div style="border:1px solid #e2e8f0;border-top:none;padding:20px 24px;border-radius:0 0 12px 12px;background:#ffffff;">
-      <h2 style="font-size:16px;margin:0 0 10px;">📅 In scadenza (prossimi ${daysAhead} giorni)</h2>
-      <table style="width:100%;border-collapse:collapse;font-size:14px;">
-        <thead>
-          <tr style="text-align:left;color:#475569;">
-            <th style="padding:8px 10px;border-bottom:2px solid #e2e8f0;">Azienda</th>
-            <th style="padding:8px 10px;border-bottom:2px solid #e2e8f0;">Fase</th>
-            <th style="padding:8px 10px;border-bottom:2px solid #e2e8f0;">Sensibility</th>
-            <th style="padding:8px 10px;border-bottom:2px solid #e2e8f0;">Kg min</th>
-            <th style="padding:8px 10px;border-bottom:2px solid #e2e8f0;">Scadenza</th>
-          </tr>
-        </thead>
-        <tbody>${dueRows}</tbody>
-      </table>
+      ${summary}
+      ${allClear}
+      ${overdueBlock}
+      ${todayBlock}
+      ${upcomingBlock}
+      ${planBlock}
 
-      <h2 style="font-size:16px;margin:22px 0 10px;">📊 Recap pipeline per fase</h2>
-      <table style="width:100%;border-collapse:collapse;font-size:14px;">
-        <tbody>${recapRows}</tbody>
-      </table>
+      <h2 style="font-size:15px;margin:24px 0 8px;color:#334155;">📊 Pipeline per fase</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;"><tbody>${recapRows}</tbody></table>
 
       <p style="margin-top:22px;color:#94a3b8;font-size:12px;">Email automatica generata da Cafezal CRM.</p>
     </div>
