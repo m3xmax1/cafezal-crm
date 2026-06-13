@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Agenda from './pages/Agenda.jsx';
+import Statistiche from './pages/Statistiche.jsx';
 import Profilo from './pages/Profilo.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 
@@ -22,6 +23,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Agenda />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/statistiche"
+        element={
+          <ProtectedRoute>
+            <Statistiche />
           </ProtectedRoute>
         }
       />
