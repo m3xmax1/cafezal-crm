@@ -105,8 +105,8 @@ export default function OpportunityModal({
   }
 
   const field =
-    'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500';
-  const label = 'mb-1 block text-sm font-medium text-slate-700';
+    'w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
+  const label = 'mb-1.5 block text-sm font-medium text-slate-700';
 
   return (
     <div
@@ -309,7 +309,7 @@ export default function OpportunityModal({
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60"
+                className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60"
               >
                 {saving ? 'Salvataggio…' : 'Salva'}
               </button>

@@ -4,6 +4,7 @@ export async function list(req, res, next) {
   try {
     const data = await service.listOpportunities(req.user, {
       commerciale: req.query.commerciale,
+      categoria: req.query.categoria,
       fase: req.query.fase,
       sensibility: req.query.sensibility,
     });

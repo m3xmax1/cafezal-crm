@@ -61,3 +61,20 @@ export const SENS_BADGE = {
   mid: 'bg-amber-100 text-amber-800',
   high: 'bg-red-100 text-red-800',
 };
+
+// Sensibility dot color (compact indicator on cards)
+export const SENS_DOT = {
+  low: 'bg-emerald-500',
+  mid: 'bg-amber-500',
+  high: 'bg-rose-500',
+};
+
+// Solid accent colour per phase (column header dot + count)
+export const FASE_ACCENT = {
+  Lead: 'bg-slate-400',
+  Contattato: 'bg-blue-500',
+  'In trattativa': 'bg-amber-500',
+  Proposta: 'bg-violet-500',
+  Chiuso: 'bg-emerald-500',
+  'K.O.': 'bg-rose-500',
+};

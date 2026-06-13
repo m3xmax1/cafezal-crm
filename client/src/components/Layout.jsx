@@ -2,34 +2,58 @@ import { useAuth } from '../context/AuthContext.jsx';
 
 export default function Layout({ children, right }) {
   const { email, commerciale, isAdmin, signOut } = useAuth();
+  const name = commerciale || email || '';
+  const initial = (name[0] || 'U').toUpperCase();
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-6">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">☕</span>
-          <div>
-            <h1 className="text-lg font-bold leading-none text-slate-800">Cafezal CRM</h1>
-            <p className="text-xs text-slate-500">Pipeline vendite</p>
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-900 text-sm font-bold tracking-tight text-white shadow-sm">
+              C
+            </div>
+            <div className="leading-tight">
+              <h1 className="text-[15px] font-bold tracking-tight text-slate-900">Cafezal CRM</h1>
+              <p className="text-xs text-slate-500">Pipeline vendite</p>
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-3">
-          {right}
-          <div className="hidden text-right sm:block">
-            <div className="text-sm font-medium text-slate-700">{commerciale || email}</div>
-            <div className="text-xs text-slate-400">{isAdmin ? 'Admin' : 'Commerciale'}</div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            {right}
+            <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white py-1 pl-1 pr-3 sm:flex">
+              <div className="grid h-7 w-7 place-items-center rounded-full bg-blue-600 text-xs font-semibold text-white">
+                {initial}
+              </div>
+              <div className="text-right leading-tight">
+                <div className="text-xs font-semibold text-slate-700">{name}</div>
+                <div className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                  {isAdmin ? 'Admin' : 'Commerciale'}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={signOut}
+              title="Esci"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="h-4 w-4"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17l5-5-5-5M20 12H9M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+              </svg>
+              <span className="hidden sm:inline">Esci</span>
+            </button>
           </div>
-          <button
-            onClick={signOut}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
-          >
-            Esci
-          </button>
         </div>
       </header>
 
-      <main className="flex-1 p-4 sm:p-6">{children}</main>
+      <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-5 sm:px-6">{children}</main>
     </div>
   );
 }
