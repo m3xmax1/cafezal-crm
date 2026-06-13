@@ -41,7 +41,18 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ csv, skipDuplicates }),
     }),
+  get: (id) => request(`/opportunities/${id}`),
   update: (id, payload) =>
     request(`/opportunities/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   remove: (id) => request(`/opportunities/${id}`, { method: 'DELETE' }),
+
+  // Agenda (follow-ups + activities, scoped)
+  agenda: () => request('/agenda'),
+
+  // Activity timeline (per lead)
+  listActivities: (id) => request(`/opportunities/${id}/activities`),
+  addActivity: (id, payload) =>
+    request(`/opportunities/${id}/activities`, { method: 'POST', body: JSON.stringify(payload) }),
+  deleteActivity: (id, actId) =>
+    request(`/opportunities/${id}/activities/${actId}`, { method: 'DELETE' }),
 };

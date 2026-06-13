@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
+import { CLOSED_FASI, followupStatus } from '../lib/constants.js';
 import Layout from '../components/Layout.jsx';
 import Filters from '../components/Filters.jsx';
 import KanbanBoard from '../components/KanbanBoard.jsx';
@@ -17,6 +19,7 @@ export default function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,6 +54,48 @@ export default function Dashboard() {
       conclusi: shown.filter((o) => o.fase_pipeline === 'Chiuso').length,
     };
   }, [shown]);
+
+  // Guidance counters: overdue/today follow-ups + assigned leads with no next step.
+  const todo = useMemo(() => {
+    let overdue = 0;
+    let today = 0;
+    let plan = 0;
+    for (const o of items) {
+      if (CLOSED_FASI.includes(o.fase_pipeline)) continue;
+      const fu = followupStatus(o.data_prossimo_followup);
+      if (fu) {
+        if (fu.key === 'overdue') overdue += 1;
+        else if (fu.key === 'today') today += 1;
+      } else if (o.commerciale_assegnato) {
+        plan += 1;
+      }
+    }
+    return { overdue, today, plan };
+  }, [items]);
+
+  // Deep link from the Agenda (/?lead=<id>) opens that lead's modal.
+  useEffect(() => {
+    const leadId = searchParams.get('lead');
+    if (!leadId || modalOpen) return;
+    const found = items.find((o) => String(o.id) === String(leadId));
+    if (found) {
+      setEditing(found);
+      setModalOpen(true);
+      setSearchParams({}, { replace: true });
+    } else if (!loading) {
+      api
+        .get(leadId)
+        .then((o) => {
+          if (o) {
+            setEditing(o);
+            setModalOpen(true);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setSearchParams({}, { replace: true }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, items, loading]);
 
   function openNew() {
     setEditing(null);
@@ -141,6 +186,39 @@ export default function Dashboard() {
           <Filters value={filters} onChange={setFilters} showCommerciale={isAdmin} />
         </div>
       </div>
+
+      {/* Guidance: what to do today */}
+      {todo.overdue + todo.today + todo.plan > 0 && (
+        <Link
+          to="/agenda"
+          className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5 shadow-card transition hover:border-slate-300"
+        >
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+            <span className="font-semibold text-slate-700">Da fare</span>
+            {todo.overdue > 0 && (
+              <span className="inline-flex items-center gap-1.5 font-medium text-rose-600">
+                <span className="h-2 w-2 rounded-full bg-rose-500" />
+                {todo.overdue} in ritardo
+              </span>
+            )}
+            {todo.today > 0 && (
+              <span className="inline-flex items-center gap-1.5 font-medium text-amber-600">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                {todo.today} oggi
+              </span>
+            )}
+            {todo.plan > 0 && (
+              <span className="inline-flex items-center gap-1.5 font-medium text-slate-500">
+                <span className="h-2 w-2 rounded-full bg-slate-300" />
+                {todo.plan} da pianificare
+              </span>
+            )}
+          </div>
+          <span className="hidden shrink-0 items-center gap-1 text-sm font-medium text-blue-600 sm:inline-flex">
+            Apri agenda →
+          </span>
+        </Link>
+      )}
 
       {/* Stats strip */}
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">

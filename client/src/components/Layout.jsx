@@ -1,5 +1,10 @@
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+
+const navCls = ({ isActive }) =>
+  `rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors ${
+    isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+  }`;
 
 export default function Layout({ children, right }) {
   const { email, commerciale, isAdmin, signOut } = useAuth();
@@ -10,15 +15,25 @@ export default function Layout({ children, right }) {
     <div className="flex min-h-full flex-col">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-900 text-sm font-bold tracking-tight text-white shadow-sm">
-              C
-            </div>
-            <div className="leading-tight">
-              <h1 className="text-[15px] font-bold tracking-tight text-slate-900">Cafezal CRM</h1>
-              <p className="text-xs text-slate-500">Pipeline vendite</p>
-            </div>
-          </Link>
+          <div className="flex items-center gap-3 sm:gap-6">
+            <Link to="/" className="flex items-center gap-2.5">
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-900 text-sm font-bold tracking-tight text-white shadow-sm">
+                C
+              </div>
+              <div className="hidden leading-tight sm:block">
+                <h1 className="text-[15px] font-bold tracking-tight text-slate-900">Cafezal CRM</h1>
+                <p className="text-xs text-slate-500">Pipeline vendite</p>
+              </div>
+            </Link>
+            <nav className="flex items-center gap-0.5">
+              <NavLink to="/" end className={navCls}>
+                Pipeline
+              </NavLink>
+              <NavLink to="/agenda" className={navCls}>
+                Agenda
+              </NavLink>
+            </nav>
+          </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
             {right}

@@ -78,3 +78,45 @@ export const FASE_ACCENT = {
   Chiuso: 'bg-emerald-500',
   'K.O.': 'bg-rose-500',
 };
+
+export const CLOSED_FASI = ['Chiuso', 'K.O.'];
+
+// Activity timeline types
+export const ACTIVITY_TIPI = ['chiamata', 'email', 'meeting', 'nota', 'altro'];
+export const ACTIVITY_TIPO_META = {
+  chiamata: { label: 'Chiamata', badge: 'bg-blue-100 text-blue-800', icon: '📞' },
+  email: { label: 'Email', badge: 'bg-violet-100 text-violet-800', icon: '✉️' },
+  meeting: { label: 'Meeting', badge: 'bg-emerald-100 text-emerald-800', icon: '🤝' },
+  nota: { label: 'Nota', badge: 'bg-slate-100 text-slate-700', icon: '📝' },
+  altro: { label: 'Altro', badge: 'bg-amber-100 text-amber-800', icon: '•' },
+};
+
+/** Local date YYYY-MM-DD (today). */
+export function todayISO() {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 10);
+}
+
+/** Format YYYY-MM-DD → DD/MM/YYYY for display. */
+export function fmtDate(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = String(dateStr).split('-');
+  return d ? `${d}/${m}/${y}` : dateStr;
+}
+
+/** Follow-up status relative to today (drives colour + label). */
+export function followupStatus(dateStr) {
+  if (!dateStr) return null;
+  const [y, m, d] = String(dateStr).split('-').map(Number);
+  const target = new Date(y, m - 1, d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.round((target - today) / 86400000);
+  if (days < 0)
+    return { days, key: 'overdue', label: days === -1 ? 'Ieri' : `${Math.abs(days)}g fa`, dot: 'bg-rose-500', text: 'text-rose-600' };
+  if (days === 0) return { days, key: 'today', label: 'Oggi', dot: 'bg-amber-500', text: 'text-amber-600' };
+  if (days === 1) return { days, key: 'soon', label: 'Domani', dot: 'bg-blue-500', text: 'text-blue-600' };
+  if (days <= 7) return { days, key: 'soon', label: `Tra ${days}g`, dot: 'bg-blue-500', text: 'text-blue-600' };
+  return { days, key: 'future', label: `Tra ${days}g`, dot: 'bg-slate-400', text: 'text-slate-500' };
+}

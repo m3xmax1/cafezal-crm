@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { CATEGORIA_BADGE, SENS_DOT } from '../lib/constants.js';
+import { CATEGORIA_BADGE, SENS_DOT, CLOSED_FASI, followupStatus } from '../lib/constants.js';
 
 function daysUntil(dateStr) {
   if (!dateStr) return null;
@@ -40,6 +40,12 @@ export default function OpportunityCard({ opp, onClick }) {
     d === null ? null : d < 0 ? `Scaduta da ${Math.abs(d)}g` : d === 0 ? 'Scade oggi' : `Tra ${d}g`;
   const dueColor =
     d === null ? '' : d <= 0 ? 'text-rose-600' : d <= 3 ? 'text-amber-600' : 'text-slate-400';
+
+  const fu = followupStatus(opp.data_prossimo_followup);
+  const needsPlan =
+    !opp.data_prossimo_followup &&
+    opp.commerciale_assegnato &&
+    !CLOSED_FASI.includes(opp.fase_pipeline);
 
   function handlePointerDownCapture(e) {
     downPos.current = { x: e.clientX, y: e.clientY };
@@ -102,8 +108,24 @@ export default function OpportunityCard({ opp, onClick }) {
         {opp.quantita_minima_kg != null && <span>{opp.quantita_minima_kg} kg</span>}
       </div>
 
+      {fu && (
+        <div className={`mt-2 flex items-center gap-1.5 text-[11px] font-medium ${fu.text}`}>
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${fu.dot}`} />
+          <span className="shrink-0">Follow-up {fu.label}</span>
+          {opp.prossima_azione && (
+            <span className="truncate font-normal text-slate-400">· {opp.prossima_azione}</span>
+          )}
+        </div>
+      )}
+      {!fu && needsPlan && (
+        <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+          Da pianificare
+        </div>
+      )}
+
       {dueLabel && (
-        <div className={`mt-2 inline-flex items-center gap-1 text-[11px] font-medium ${dueColor}`}>
+        <div className={`mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium ${dueColor}`}>
           <IconCalendar className="h-3 w-3" />
           {dueLabel}
         </div>

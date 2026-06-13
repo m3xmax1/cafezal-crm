@@ -1,14 +1,23 @@
 import { useEffect, useState } from 'react';
 import { COMMERCIALI, FASI, SENSIBILITY, CATEGORIE } from '../lib/constants.js';
+import ActivityTimeline from './ActivityTimeline.jsx';
 
 const empty = {
   azienda: '',
+  referente: '',
+  ruolo_referente: '',
+  telefono: '',
+  email: '',
+  sito_web: '',
+  citta: '',
   commerciale_assegnato: '',
   categoria: '',
   fase_pipeline: 'Lead',
   macchina: false,
   quantita_minima_kg: '',
   sensibility: 'mid',
+  prossima_azione: '',
+  data_prossimo_followup: '',
   note: '',
   data_scadenza: '',
 };
@@ -32,12 +41,20 @@ export default function OpportunityModal({
     if (opp) {
       setForm({
         azienda: opp.azienda || '',
+        referente: opp.referente || '',
+        ruolo_referente: opp.ruolo_referente || '',
+        telefono: opp.telefono || '',
+        email: opp.email || '',
+        sito_web: opp.sito_web || '',
+        citta: opp.citta || '',
         commerciale_assegnato: opp.commerciale_assegnato || '',
         categoria: opp.categoria || '',
         fase_pipeline: opp.fase_pipeline || 'Lead',
         macchina: !!opp.macchina,
         quantita_minima_kg: opp.quantita_minima_kg ?? '',
         sensibility: opp.sensibility || 'mid',
+        prossima_azione: opp.prossima_azione || '',
+        data_prossimo_followup: opp.data_prossimo_followup || '',
         note: opp.note || '',
         data_scadenza: opp.data_scadenza || '',
       });
@@ -66,6 +83,7 @@ export default function OpportunityModal({
         categoria: form.categoria || null,
         quantita_minima_kg: form.quantita_minima_kg === '' ? null : Number(form.quantita_minima_kg),
         data_scadenza: form.data_scadenza || null,
+        data_prossimo_followup: form.data_prossimo_followup || null,
         note: form.note || null,
       };
       await onSave(payload, opp?.id);
@@ -82,7 +100,7 @@ export default function OpportunityModal({
     setDeleting(true);
     setError('');
     try {
-      await onDelete(opp.id); // parent closes the modal on success
+      await onDelete(opp.id);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -107,6 +125,7 @@ export default function OpportunityModal({
   const field =
     'w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
   const label = 'mb-1.5 block text-sm font-medium text-slate-700';
+  const section = 'mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400';
 
   return (
     <div
@@ -114,12 +133,12 @@ export default function OpportunityModal({
       onClick={onClose}
     >
       <div
-        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl"
+        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold text-slate-800">
-            {isEdit ? 'Modifica opportunità' : 'Nuova opportunità'}
+            {isEdit ? form.azienda || 'Modifica opportunità' : 'Nuova opportunità'}
           </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Chiudi">
             ✕
@@ -130,151 +149,184 @@ export default function OpportunityModal({
           <div className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
         )}
 
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} className="space-y-5">
+          {/* ── Dati cliente ── */}
           <div>
-            <label className={label}>Azienda *</label>
-            <input
-              className={field}
-              value={form.azienda}
-              onChange={(e) => set('azienda', e.target.value)}
-              required
-            />
+            <p className={section}>Dati cliente</p>
+            <div className="space-y-4">
+              <div>
+                <label className={label}>Azienda *</label>
+                <input
+                  className={field}
+                  value={form.azienda}
+                  onChange={(e) => set('azienda', e.target.value)}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={label}>Referente</label>
+                  <input className={field} value={form.referente} onChange={(e) => set('referente', e.target.value)} />
+                </div>
+                <div>
+                  <label className={label}>Ruolo</label>
+                  <input className={field} value={form.ruolo_referente} onChange={(e) => set('ruolo_referente', e.target.value)} />
+                </div>
+                <div>
+                  <label className={label}>Telefono</label>
+                  <input className={field} value={form.telefono} onChange={(e) => set('telefono', e.target.value)} />
+                </div>
+                <div>
+                  <label className={label}>Email</label>
+                  <input className={field} value={form.email} onChange={(e) => set('email', e.target.value)} />
+                </div>
+                <div>
+                  <label className={label}>Città</label>
+                  <input className={field} value={form.citta} onChange={(e) => set('citta', e.target.value)} />
+                </div>
+                <div>
+                  <label className={label}>Sito web</label>
+                  <input className={field} value={form.sito_web} onChange={(e) => set('sito_web', e.target.value)} />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className={label}>Commerciale</label>
-              {isAdmin ? (
-                <select
-                  className={field}
-                  value={form.commerciale_assegnato}
-                  onChange={(e) => set('commerciale_assegnato', e.target.value)}
-                >
-                  <option value="">— Non assegnato —</option>
-                  {COMMERCIALI.map((c) => (
+          {/* ── Pipeline ── */}
+          <div>
+            <p className={section}>Pipeline</p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className={label}>Commerciale</label>
+                {isAdmin ? (
+                  <select
+                    className={field}
+                    value={form.commerciale_assegnato}
+                    onChange={(e) => set('commerciale_assegnato', e.target.value)}
+                  >
+                    <option value="">— Non assegnato —</option>
+                    {COMMERCIALI.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                ) : form.commerciale_assegnato ? (
+                  <input className={`${field} bg-slate-50 text-slate-500`} value={form.commerciale_assegnato} disabled readOnly />
+                ) : isEdit ? (
+                  <div className="flex items-center gap-2">
+                    <input className={`${field} bg-slate-50 text-slate-400`} value="— Pool (non assegnato) —" disabled readOnly />
+                    <button
+                      type="button"
+                      onClick={handleClaim}
+                      disabled={saving}
+                      className="shrink-0 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+                    >
+                      {saving ? '…' : 'Prendi in carico'}
+                    </button>
+                  </div>
+                ) : (
+                  <input className={`${field} bg-slate-50 text-slate-500`} value={`${defaultCommerciale} (tu)`} disabled readOnly />
+                )}
+              </div>
+
+              <div>
+                <label className={label}>Categoria</label>
+                <select className={field} value={form.categoria} onChange={(e) => set('categoria', e.target.value)}>
+                  <option value="">— Nessuna —</option>
+                  {CATEGORIE.map((c) => (
                     <option key={c} value={c}>
                       {c}
                     </option>
                   ))}
                 </select>
-              ) : form.commerciale_assegnato ? (
-                // Already owned by this commercial → read-only.
+              </div>
+
+              <div>
+                <label className={label}>Fase pipeline</label>
+                <select className={field} value={form.fase_pipeline} onChange={(e) => set('fase_pipeline', e.target.value)}>
+                  {FASI.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={label}>Sensibility</label>
+                <select className={field} value={form.sensibility} onChange={(e) => set('sensibility', e.target.value)}>
+                  {SENSIBILITY.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={label}>Quantità minima (kg)</label>
                 <input
-                  className={`${field} bg-slate-50 text-slate-500`}
-                  value={form.commerciale_assegnato}
-                  disabled
-                  readOnly
+                  type="number"
+                  min="0"
+                  step="any"
+                  className={field}
+                  value={form.quantita_minima_kg}
+                  onChange={(e) => set('quantita_minima_kg', e.target.value)}
                 />
-              ) : isEdit ? (
-                // Unassigned lead from the shared pool → let the commercial claim it.
-                <div className="flex items-center gap-2">
+              </div>
+
+              <div className="flex items-end">
+                <label className="flex items-center gap-2 text-sm text-slate-700">
                   <input
-                    className={`${field} bg-slate-50 text-slate-400`}
-                    value="— Pool (non assegnato) —"
-                    disabled
-                    readOnly
+                    type="checkbox"
+                    checked={form.macchina}
+                    onChange={(e) => set('macchina', e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300"
                   />
-                  <button
-                    type="button"
-                    onClick={handleClaim}
-                    disabled={saving}
-                    className="shrink-0 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
-                  >
-                    {saving ? '…' : 'Prendi in carico'}
-                  </button>
-                </div>
-              ) : (
-                // New opportunity created by a commercial → it will belong to them.
-                <input
-                  className={`${field} bg-slate-50 text-slate-500`}
-                  value={`${defaultCommerciale} (tu)`}
-                  disabled
-                  readOnly
-                />
-              )}
-            </div>
-
-            <div>
-              <label className={label}>Categoria</label>
-              <select
-                className={field}
-                value={form.categoria}
-                onChange={(e) => set('categoria', e.target.value)}
-              >
-                <option value="">— Nessuna —</option>
-                {CATEGORIE.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className={label}>Fase pipeline</label>
-              <select
-                className={field}
-                value={form.fase_pipeline}
-                onChange={(e) => set('fase_pipeline', e.target.value)}
-              >
-                {FASI.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className={label}>Sensibility</label>
-              <select
-                className={field}
-                value={form.sensibility}
-                onChange={(e) => set('sensibility', e.target.value)}
-              >
-                {SENSIBILITY.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className={label}>Quantità minima (kg)</label>
-              <input
-                type="number"
-                min="0"
-                step="any"
-                className={field}
-                value={form.quantita_minima_kg}
-                onChange={(e) => set('quantita_minima_kg', e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className={label}>Data scadenza</label>
-              <input
-                type="date"
-                className={field}
-                value={form.data_scadenza}
-                onChange={(e) => set('data_scadenza', e.target.value)}
-              />
-            </div>
-
-            <div className="flex items-end">
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={form.macchina}
-                  onChange={(e) => set('macchina', e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300"
-                />
-                Macchina inclusa
-              </label>
+                  Macchina inclusa
+                </label>
+              </div>
             </div>
           </div>
 
+          {/* ── Prossimo passo ── */}
+          <div>
+            <p className={section}>Prossimo passo</p>
+            <div className="space-y-4">
+              <div>
+                <label className={label}>Prossima azione</label>
+                <input
+                  className={field}
+                  placeholder="Es. Richiamare per inviare offerta"
+                  value={form.prossima_azione}
+                  onChange={(e) => set('prossima_azione', e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={label}>Data prossimo follow-up</label>
+                  <input
+                    type="date"
+                    className={field}
+                    value={form.data_prossimo_followup}
+                    onChange={(e) => set('data_prossimo_followup', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className={label}>Scadenza trattativa</label>
+                  <input
+                    type="date"
+                    className={field}
+                    value={form.data_scadenza}
+                    onChange={(e) => set('data_scadenza', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Note ── */}
           <div>
             <label className={label}>Note</label>
             <textarea
@@ -285,7 +337,7 @@ export default function OpportunityModal({
             />
           </div>
 
-          <div className="flex items-center justify-between gap-2 pt-2">
+          <div className="flex items-center justify-between gap-2 pt-1">
             {isEdit ? (
               <button
                 type="button"
@@ -316,6 +368,9 @@ export default function OpportunityModal({
             </div>
           </div>
         </form>
+
+        {/* Activity timeline — only for existing leads (sibling of the form, not nested) */}
+        {isEdit && <ActivityTimeline opportunityId={opp.id} />}
       </div>
     </div>
   );
