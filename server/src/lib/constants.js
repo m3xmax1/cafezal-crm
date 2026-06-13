@@ -6,6 +6,18 @@ export const FASI = ['Lead', 'Contattato', 'In trattativa', 'Proposta', 'Chiuso'
 
 export const SENSIBILITY = ['low', 'mid', 'high'];
 
+export const CATEGORIE = [
+  'Hotel',
+  'Caffè/Bakery IT',
+  'Caffè/Bakery Estero',
+  'Ristoranti',
+  'Agenzie',
+  'Startup',
+  'Corporate',
+  'Moda/Design',
+  'Meta Lead',
+];
+
 // Login email -> commerciale enum value
 export const EMAIL_TO_COMMERCIALE = {
   'laura@cafezal.com': 'Laura',

@@ -1,11 +1,11 @@
-import { COMMERCIALI, FASI, SENSIBILITY } from '../lib/constants.js';
+import { COMMERCIALI, FASI, SENSIBILITY, CATEGORIE } from '../lib/constants.js';
 
 export default function Filters({ value, onChange, showCommerciale }) {
   const set = (k, v) => onChange({ ...value, [k]: v });
   const sel =
     'rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm outline-none focus:border-slate-500';
 
-  const hasFilters = value.commerciale || value.fase || value.sensibility;
+  const hasFilters = value.commerciale || value.categoria || value.fase || value.sensibility;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -23,6 +23,19 @@ export default function Filters({ value, onChange, showCommerciale }) {
           ))}
         </select>
       )}
+
+      <select
+        className={sel}
+        value={value.categoria || ''}
+        onChange={(e) => set('categoria', e.target.value)}
+      >
+        <option value="">Tutte le categorie</option>
+        {CATEGORIE.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
 
       <select
         className={sel}

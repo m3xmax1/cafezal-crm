@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { COMMERCIALI, FASI, SENSIBILITY } from '../lib/constants.js';
+import { COMMERCIALI, FASI, SENSIBILITY, CATEGORIE } from '../lib/constants.js';
 
 const empty = {
   azienda: '',
   commerciale_assegnato: '',
+  categoria: '',
   fase_pipeline: 'Lead',
   macchina: false,
   quantita_minima_kg: '',
@@ -32,6 +33,7 @@ export default function OpportunityModal({
       setForm({
         azienda: opp.azienda || '',
         commerciale_assegnato: opp.commerciale_assegnato || '',
+        categoria: opp.categoria || '',
         fase_pipeline: opp.fase_pipeline || 'Lead',
         macchina: !!opp.macchina,
         quantita_minima_kg: opp.quantita_minima_kg ?? '',
@@ -61,6 +63,7 @@ export default function OpportunityModal({
       const payload = {
         ...form,
         commerciale_assegnato: form.commerciale_assegnato || null,
+        categoria: form.categoria || null,
         quantita_minima_kg: form.quantita_minima_kg === '' ? null : Number(form.quantita_minima_kg),
         data_scadenza: form.data_scadenza || null,
         note: form.note || null,
@@ -189,6 +192,22 @@ export default function OpportunityModal({
                   readOnly
                 />
               )}
+            </div>
+
+            <div>
+              <label className={label}>Categoria</label>
+              <select
+                className={field}
+                value={form.categoria}
+                onChange={(e) => set('categoria', e.target.value)}
+              >
+                <option value="">— Nessuna —</option>
+                {CATEGORIE.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>

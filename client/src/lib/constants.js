@@ -6,6 +6,31 @@ export const FASI = ['Lead', 'Contattato', 'In trattativa', 'Proposta', 'Chiuso'
 
 export const SENSIBILITY = ['low', 'mid', 'high'];
 
+export const CATEGORIE = [
+  'Hotel',
+  'Caffè/Bakery IT',
+  'Caffè/Bakery Estero',
+  'Ristoranti',
+  'Agenzie',
+  'Startup',
+  'Corporate',
+  'Moda/Design',
+  'Meta Lead',
+];
+
+// Badge colours per category (tag visualization on cards/filters)
+export const CATEGORIA_BADGE = {
+  Hotel: 'bg-amber-100 text-amber-800',
+  'Caffè/Bakery IT': 'bg-orange-100 text-orange-800',
+  'Caffè/Bakery Estero': 'bg-yellow-100 text-yellow-800',
+  Ristoranti: 'bg-red-100 text-red-800',
+  Agenzie: 'bg-blue-100 text-blue-800',
+  Startup: 'bg-violet-100 text-violet-800',
+  Corporate: 'bg-slate-200 text-slate-700',
+  'Moda/Design': 'bg-fuchsia-100 text-fuchsia-800',
+  'Meta Lead': 'bg-cyan-100 text-cyan-800',
+};
+
 export const EMAIL_TO_COMMERCIALE = {
   'laura@cafezal.com': 'Laura',
   'massimo@cafezal.com': 'Massimo',

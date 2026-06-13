@@ -1,5 +1,5 @@
 import { db } from '../config/supabase.js';
-import { COMMERCIALI, FASI, SENSIBILITY } from '../lib/constants.js';
+import { COMMERCIALI, FASI, SENSIBILITY, CATEGORIE } from '../lib/constants.js';
 
 const TABLE = 'opportunities';
 
@@ -37,6 +37,9 @@ export async function listOpportunities(user, filters = {}) {
   }
   if (filters.sensibility && SENSIBILITY.includes(filters.sensibility)) {
     query = query.eq('sensibility', filters.sensibility);
+  }
+  if (filters.categoria && CATEGORIE.includes(filters.categoria)) {
+    query = query.eq('categoria', filters.categoria);
   }
 
   const { data, error } = await query;
@@ -146,6 +149,14 @@ function sanitize(payload = {}, { partial }) {
 
   if (payload.data_scadenza !== undefined) {
     out.data_scadenza = payload.data_scadenza ? payload.data_scadenza : null;
+  }
+
+  if (payload.categoria !== undefined) {
+    const v = payload.categoria;
+    if (v !== null && v !== '' && !CATEGORIE.includes(v)) {
+      throw httpError('categoria non valida', 400);
+    }
+    out.categoria = v === '' ? null : v;
   }
 
   return out;

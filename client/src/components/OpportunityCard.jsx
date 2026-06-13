@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { SENS_BADGE } from '../lib/constants.js';
+import { SENS_BADGE, CATEGORIA_BADGE } from '../lib/constants.js';
 
 function daysUntil(dateStr) {
   if (!dateStr) return null;
@@ -69,6 +69,15 @@ export default function OpportunityCard({ opp, onClick }) {
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+        {opp.categoria && (
+          <span
+            className={`rounded-full px-2 py-0.5 font-medium ${
+              CATEGORIA_BADGE[opp.categoria] || 'bg-slate-100 text-slate-700'
+            }`}
+          >
+            {opp.categoria}
+          </span>
+        )}
         {opp.commerciale_assegnato ? (
           <span>👤 {opp.commerciale_assegnato}</span>
         ) : (
