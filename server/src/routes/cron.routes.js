@@ -19,6 +19,17 @@ function checkSecret(req, res) {
 }
 
 /**
+ * Optional test recipient (`?to=` or body.to) to redirect emails to a single
+ * inbox. Only honored when CRON_SECRET is configured — otherwise the endpoint is
+ * open and an arbitrary `to` could exfiltrate the report's business data.
+ */
+function overrideToFrom(req) {
+  if (!config.cron.secret) return null;
+  const v = (req.query.to || req.body?.to || '').toString().trim();
+  return /^\S+@\S+\.\S+$/.test(v) ? v : null;
+}
+
+/**
  * Trigger the daily reminder job manually or from a scheduler
  * (Vercel Cron, GitHub Actions, cron-job.org, etc.).
  *
@@ -31,7 +42,7 @@ function checkSecret(req, res) {
 async function handler(req, res, next) {
   try {
     if (!checkSecret(req, res)) return undefined;
-    const result = await runDailyReminders();
+    const result = await runDailyReminders({ overrideTo: overrideToFrom(req) });
     return res.json({ ok: true, ...result });
   } catch (e) {
     return next(e);
@@ -41,7 +52,7 @@ async function handler(req, res, next) {
 async function monthlyReportHandler(req, res, next) {
   try {
     if (!checkSecret(req, res)) return undefined;
-    const result = await runMonthlyReport();
+    const result = await runMonthlyReport({ overrideTo: overrideToFrom(req) });
     return res.json(result);
   } catch (e) {
     return next(e);

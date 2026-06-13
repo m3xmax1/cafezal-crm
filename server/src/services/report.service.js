@@ -61,7 +61,9 @@ function emptyPhases() {
  * Build the monthly management report and email it to config.report.to.
  * The report covers the *previous* calendar month (the job runs on the 1st).
  */
-export async function runMonthlyReport() {
+export async function runMonthlyReport(options = {}) {
+  // overrideTo (test mode) redirects the report to a single address instead of carlos@.
+  const overrideTo = options.overrideTo || null;
   const tz = config.cron.timezone;
   const win = previousMonthWindow(tz);
   const rows = await fetchAll();
@@ -131,12 +133,14 @@ export async function runMonthlyReport() {
   };
 
   const html = buildMonthlyReportEmail(stats);
-  const to = config.report.to;
-  const subject = `Report mensile Cafezal CRM — ${win.label}`;
+  const to = overrideTo || config.report.to;
+  const subject = overrideTo
+    ? `[TEST] Report mensile Cafezal CRM — ${win.label}`
+    : `Report mensile Cafezal CRM — ${win.label}`;
 
   try {
     await sendMail({ to, subject, html });
-    return { ok: true, to, month: win.label, total, sent: true, stats };
+    return { ok: true, to, month: win.label, total, sent: true, test: Boolean(overrideTo), stats };
   } catch (err) {
     return { ok: false, to, month: win.label, sent: false, error: err.message };
   }

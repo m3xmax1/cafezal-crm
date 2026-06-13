@@ -31,13 +31,16 @@ function addDaysISO(iso, days) {
  * For each commercial, find opportunities due within REMINDER_DAYS_AHEAD days
  * (excluding finalized phases), build a per-phase recap, and email them.
  */
-export async function runDailyReminders() {
+export async function runDailyReminders(options = {}) {
+  // When overrideTo is set (test mode), every email is redirected to that single
+  // address instead of the real commercials — handy to verify SMTP without spamming.
+  const overrideTo = options.overrideTo || null;
   const today = todayISO();
   const until = addDaysISO(today, config.cron.daysAhead);
   const results = [];
 
   for (const commerciale of COMMERCIALI) {
-    const to = COMMERCIALE_TO_EMAIL[commerciale];
+    const to = overrideTo || COMMERCIALE_TO_EMAIL[commerciale];
 
     // Opportunities due in the window.
     const { data: dueRaw, error: dueErr } = await db
@@ -78,13 +81,17 @@ export async function runDailyReminders() {
       today,
     });
 
+    const subject = overrideTo
+      ? `[TEST] Recap Giornaliero - Cafezal CRM (${commerciale})`
+      : 'Recap Giornaliero - Cafezal CRM';
+
     try {
-      await sendMail({ to, subject: 'Recap Giornaliero - Cafezal CRM', html });
+      await sendMail({ to, subject, html });
       results.push({ commerciale, to, sent: true, dueCount: due.length });
     } catch (err) {
       results.push({ commerciale, to, sent: false, error: err.message });
     }
   }
 
-  return { today, until, daysAhead: config.cron.daysAhead, results };
+  return { today, until, daysAhead: config.cron.daysAhead, test: Boolean(overrideTo), results };
 }
