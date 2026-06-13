@@ -1,5 +1,5 @@
 import { db } from '../config/supabase.js';
-import { COMMERCIALI, FASI, SENSIBILITY, CATEGORIE } from '../lib/constants.js';
+import { COMMERCIALI, FASI, SENSIBILITY, CATEGORIE, CLOSED_FASI } from '../lib/constants.js';
 import { parseCsv, norm } from '../lib/csv.js';
 
 const TABLE = 'opportunities';
@@ -70,6 +70,58 @@ export async function listOpportunities(user, filters = {}) {
   };
 
   return fetchAllRows(buildQuery);
+}
+
+/**
+ * Agenda: scheduled follow-ups (from leads' data_prossimo_followup) + logged/
+ * planned activities, scoped to what the user can see, within an optional range.
+ */
+export async function getAgenda(user, { from, to } = {}) {
+  if (!user.isAdmin && !user.commerciale) return { followups: [], activities: [] };
+
+  // Follow-ups taken from the leads themselves (exclude finalized phases).
+  let fq = db
+    .from(TABLE)
+    .select(
+      'id, azienda, categoria, fase_pipeline, commerciale_assegnato, prossima_azione, data_prossimo_followup',
+    )
+    .not('data_prossimo_followup', 'is', null)
+    .order('data_prossimo_followup', { ascending: true });
+  fq = applyScope(fq, user);
+  if (from) fq = fq.gte('data_prossimo_followup', from);
+  if (to) fq = fq.lte('data_prossimo_followup', to);
+  const { data: fData, error: fErr } = await fq;
+  if (fErr) throw fErr;
+  const followups = (fData || []).filter((o) => !CLOSED_FASI.includes(o.fase_pipeline));
+
+  // Activities (history + planned appointments), with their parent lead embedded.
+  let aq = db
+    .from('activities')
+    .select(
+      'id, opportunity_id, commerciale, tipo, descrizione, data, opportunities(azienda, commerciale_assegnato, fase_pipeline, categoria)',
+    )
+    .order('data', { ascending: true });
+  if (from) aq = aq.gte('data', from);
+  if (to) aq = aq.lte('data', to);
+  const { data: aData, error: aErr } = await aq;
+  if (aErr) throw aErr;
+  const activities = (aData || [])
+    .filter((a) => {
+      const opp = a.opportunities || {};
+      if (user.isAdmin) return true;
+      return opp.commerciale_assegnato === user.commerciale || opp.commerciale_assegnato == null;
+    })
+    .map((a) => ({
+      id: a.id,
+      opportunity_id: a.opportunity_id,
+      azienda: a.opportunities?.azienda || '',
+      categoria: a.opportunities?.categoria || null,
+      tipo: a.tipo,
+      descrizione: a.descrizione,
+      data: a.data,
+    }));
+
+  return { followups, activities };
 }
 
 export async function getOpportunity(user, id) {
@@ -182,6 +234,18 @@ function sanitize(payload = {}, { partial }) {
       throw httpError('categoria non valida', 400);
     }
     out.categoria = v === '' ? null : v;
+  }
+
+  // Free-text client fields (pipeline guidata). Empty string → null.
+  for (const f of ['referente', 'ruolo_referente', 'telefono', 'email', 'sito_web', 'citta', 'prossima_azione']) {
+    if (payload[f] !== undefined) {
+      const v = payload[f];
+      out[f] = v === null || v === '' ? null : String(v);
+    }
+  }
+
+  if (payload.data_prossimo_followup !== undefined) {
+    out.data_prossimo_followup = payload.data_prossimo_followup ? payload.data_prossimo_followup : null;
   }
 
   return out;

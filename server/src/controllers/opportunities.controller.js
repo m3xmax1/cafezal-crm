@@ -1,4 +1,5 @@
 import * as service from '../services/opportunities.service.js';
+import * as activities from '../services/activities.service.js';
 
 export async function list(req, res, next) {
   try {
@@ -65,5 +66,41 @@ export async function importCsv(req, res, next) {
     return res.json(result);
   } catch (e) {
     return next(e);
+  }
+}
+
+export async function agenda(req, res, next) {
+  try {
+    const data = await service.getAgenda(req.user, { from: req.query.from, to: req.query.to });
+    res.json(data);
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function listActivities(req, res, next) {
+  try {
+    const data = await activities.listActivities(req.user, req.params.id);
+    res.json(data);
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function addActivity(req, res, next) {
+  try {
+    const data = await activities.addActivity(req.user, req.params.id, req.body || {});
+    res.status(201).json(data);
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function deleteActivity(req, res, next) {
+  try {
+    await activities.deleteActivity(req.user, req.params.id, req.params.actId);
+    res.status(204).send();
+  } catch (e) {
+    next(e);
   }
 }

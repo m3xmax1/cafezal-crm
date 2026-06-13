@@ -39,3 +39,6 @@ export const COMMERCIALE_TO_EMAIL = {
 
 // Phases that are already finalized — excluded from "due soon" reminders.
 export const CLOSED_FASI = ['Chiuso', 'K.O.'];
+
+// Activity timeline entry types (manual log: calls, emails, meetings, notes).
+export const ACTIVITY_TIPI = ['chiamata', 'email', 'meeting', 'nota', 'altro'];

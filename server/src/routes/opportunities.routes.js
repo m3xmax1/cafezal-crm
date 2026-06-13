@@ -14,4 +14,9 @@ router.patch('/:id', ctrl.update);
 router.put('/:id', ctrl.update);
 router.delete('/:id', ctrl.remove);
 
+// Activity timeline (nested under a lead)
+router.get('/:id/activities', ctrl.listActivities);
+router.post('/:id/activities', ctrl.addActivity);
+router.delete('/:id/activities/:actId', ctrl.deleteActivity);
+
 export default router;
