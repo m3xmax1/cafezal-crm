@@ -36,6 +36,11 @@ export const api = {
   },
   create: (payload) =>
     request('/opportunities', { method: 'POST', body: JSON.stringify(payload) }),
+  importCsv: (csv, skipDuplicates = true) =>
+    request('/opportunities/import', {
+      method: 'POST',
+      body: JSON.stringify({ csv, skipDuplicates }),
+    }),
   update: (id, payload) =>
     request(`/opportunities/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   remove: (id) => request(`/opportunities/${id}`, { method: 'DELETE' }),

@@ -52,3 +52,18 @@ export async function remove(req, res, next) {
     next(e);
   }
 }
+
+export async function importCsv(req, res, next) {
+  try {
+    const csv = req.body?.csv;
+    if (typeof csv !== 'string' || !csv.trim()) {
+      return res.status(400).json({ error: 'Campo "csv" mancante o vuoto.' });
+    }
+    const result = await service.importOpportunities(req.user, csv, {
+      skipDuplicates: req.body?.skipDuplicates !== false,
+    });
+    return res.json(result);
+  } catch (e) {
+    return next(e);
+  }
+}

@@ -5,6 +5,7 @@ import Layout from '../components/Layout.jsx';
 import Filters from '../components/Filters.jsx';
 import KanbanBoard from '../components/KanbanBoard.jsx';
 import OpportunityModal from '../components/OpportunityModal.jsx';
+import ImportModal from '../components/ImportModal.jsx';
 
 export default function Dashboard() {
   const { commerciale, isAdmin } = useAuth();
@@ -15,6 +16,7 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -82,16 +84,29 @@ export default function Dashboard() {
     }
   }
 
-  const newBtn = (
-    <button
-      onClick={openNew}
-      className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-      </svg>
-      Nuova
-    </button>
+  const headerActions = (
+    <>
+      {isAdmin && (
+        <button
+          onClick={() => setImportOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0L8 8m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+          </svg>
+          <span className="hidden sm:inline">Importa</span>
+        </button>
+      )}
+      <button
+        onClick={openNew}
+        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+        </svg>
+        Nuova
+      </button>
+    </>
   );
 
   const statCards = [
@@ -102,7 +117,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <Layout right={newBtn}>
+    <Layout right={headerActions}>
       {/* Toolbar: search + filters */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">
@@ -155,6 +170,12 @@ export default function Dashboard() {
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
         onDelete={handleDelete}
+      />
+
+      <ImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={load}
       />
     </Layout>
   );

@@ -46,4 +46,9 @@ export const config = {
     secret: process.env.CRON_SECRET || '',
     daysAhead: Number(process.env.REMINDER_DAYS_AHEAD) || 3,
   },
+
+  report: {
+    // Recipient of the monthly management report (1st of each month).
+    to: process.env.REPORT_TO || 'carlos@cafezal.it',
+  },
 };

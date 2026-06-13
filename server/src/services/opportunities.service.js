@@ -1,5 +1,6 @@
 import { db } from '../config/supabase.js';
 import { COMMERCIALI, FASI, SENSIBILITY, CATEGORIE } from '../lib/constants.js';
+import { parseCsv, norm } from '../lib/csv.js';
 
 const TABLE = 'opportunities';
 
@@ -184,4 +185,159 @@ function sanitize(payload = {}, { partial }) {
   }
 
   return out;
+}
+
+// ─── CSV import (admin self-service) ──────────────────────────────────────────
+
+// Accepted CSV header names (normalized, case/accent/punctuation-insensitive).
+const FIELD_ALIASES = {
+  azienda: ['azienda', 'aziende', 'company', 'nome', 'ragionesociale', 'cliente', 'name', 'account'],
+  categoria: ['categoria', 'category', 'tipo', 'segmento', 'tab'],
+  commerciale_assegnato: ['commerciale', 'commercialeassegnato', 'assegnato', 'owner', 'venditore', 'sales', 'responsabile'],
+  fase_pipeline: ['fase', 'fasepipeline', 'stato', 'status', 'stage', 'pipeline'],
+  sensibility: ['sensibility', 'sensibilita', 'priorita', 'priority'],
+  quantita_minima_kg: ['quantitaminimakg', 'kg', 'quantita', 'kgmin', 'quantitakg', 'kgminimi'],
+  data_scadenza: ['datascadenza', 'scadenza', 'duedate', 'deadline'],
+  note: ['note', 'notes', 'commento', 'commenti', 'descrizione'],
+  macchina: ['macchina', 'machine', 'attrezzatura'],
+};
+
+/** Match a free-text value to a canonical enum value (case/accent-insensitive). */
+function matchEnum(value, list) {
+  const n = norm(value);
+  if (!n) return null;
+  return list.find((x) => norm(x) === n) || null;
+}
+
+function parseNum(v) {
+  let s = String(v ?? '').trim();
+  if (!s) return null;
+  if (s.includes('.') && s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); // 1.234,5
+  else if (s.includes(',')) s = s.replace(',', '.');
+  const n = Number(s);
+  return Number.isNaN(n) ? null : n;
+}
+
+function parseDateISO(v) {
+  const s = String(v ?? '').trim();
+  if (!s) return null;
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/); // dd/mm/yyyy
+  if (m) {
+    let [, d, mo, y] = m;
+    if (y.length === 2) y = `20${y}`;
+    return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+  return null;
+}
+
+function parseBool(v) {
+  return ['si', 'true', '1', 'x', 'vero', 'yes', 'y'].includes(norm(v));
+}
+
+/** Load all existing company names (paged) for duplicate detection. */
+async function fetchAllAziende() {
+  const all = [];
+  for (let p = 0; p < 25; p++) {
+    const from = p * 1000;
+    const { data, error } = await db
+      .from(TABLE)
+      .select('azienda')
+      .order('id', { ascending: true })
+      .range(from, from + 999);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < 1000) break;
+  }
+  return all;
+}
+
+/**
+ * Import leads from raw CSV text (admin only).
+ * Auto-maps headers, validates/coerces values, optionally skips duplicates
+ * (by company name) and bulk-inserts in batches.
+ */
+export async function importOpportunities(user, csvText, options = {}) {
+  if (!user.isAdmin) throw httpError('Solo gli amministratori possono importare lead', 403);
+
+  const { rows } = parseCsv(csvText);
+  if (!rows.length) throw httpError('Il CSV non contiene righe di dati.', 400);
+
+  // Map each CSV header to a DB field.
+  const headerKeys = Object.keys(rows[0]);
+  const map = {};
+  for (const hk of headerKeys) {
+    const n = norm(hk);
+    for (const [field, aliases] of Object.entries(FIELD_ALIASES)) {
+      if (aliases.includes(n)) {
+        map[hk] = field;
+        break;
+      }
+    }
+  }
+  const hasAzienda = Object.values(map).includes('azienda');
+  if (!hasAzienda) {
+    throw httpError('Colonna "Azienda" non trovata. Il CSV deve contenere almeno una colonna Azienda.', 400);
+  }
+
+  const skipDuplicates = options.skipDuplicates !== false;
+  let existing = new Set();
+  if (skipDuplicates) {
+    const existingRows = await fetchAllAziende();
+    existing = new Set(existingRows.map((r) => norm(r.azienda)).filter(Boolean));
+  }
+
+  const toInsert = [];
+  const seen = new Set();
+  let skipped = 0;
+  let invalid = 0;
+
+  for (const raw of rows) {
+    const o = {};
+    for (const [hk, field] of Object.entries(map)) o[field] = raw[hk];
+
+    const azienda = String(o.azienda ?? '').trim();
+    if (!azienda) {
+      invalid += 1;
+      continue;
+    }
+    const key = norm(azienda);
+    if (seen.has(key) || (skipDuplicates && existing.has(key))) {
+      skipped += 1;
+      continue;
+    }
+    seen.add(key);
+
+    toInsert.push({
+      azienda,
+      categoria: matchEnum(o.categoria, CATEGORIE),
+      commerciale_assegnato: matchEnum(o.commerciale_assegnato, COMMERCIALI),
+      fase_pipeline: matchEnum(o.fase_pipeline, FASI) || 'Lead',
+      sensibility: matchEnum(o.sensibility, SENSIBILITY) || 'mid',
+      quantita_minima_kg: parseNum(o.quantita_minima_kg),
+      data_scadenza: parseDateISO(o.data_scadenza),
+      note: o.note ? String(o.note) : null,
+      macchina: parseBool(o.macchina),
+    });
+  }
+
+  let inserted = 0;
+  const BATCH = 500;
+  for (let i = 0; i < toInsert.length; i += BATCH) {
+    const chunk = toInsert.slice(i, i + BATCH);
+    const { error } = await db.from(TABLE).insert(chunk);
+    if (error) throw httpError(`Errore durante l'inserimento: ${error.message}`, 400);
+    inserted += chunk.length;
+  }
+
+  return {
+    total: rows.length,
+    inserted,
+    skipped,
+    invalid,
+    skipDuplicates,
+    mappedColumns: map,
+  };
 }
