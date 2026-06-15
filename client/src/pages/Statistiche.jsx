@@ -65,6 +65,7 @@ export default function Statistiche() {
     const open = total - won - lost;
     const decided = won + lost;
     const winRate = decided ? Math.round((won / decided) * 100) : null;
+    const koRate = decided ? Math.round((lost / decided) * 100) : null;
 
     const byCat = {};
     for (const o of items) {
@@ -94,10 +95,18 @@ export default function Statistiche() {
       const w = mine.filter((o) => o.fase_pipeline === 'Chiuso').length;
       const l = mine.filter((o) => o.fase_pipeline === 'K.O.').length;
       const dec = w + l;
-      return { c, total: mine.length, open: mine.length - w - l, won: w, lost: l, winRate: dec ? Math.round((w / dec) * 100) : null };
+      return {
+        c,
+        total: mine.length,
+        open: mine.length - w - l,
+        won: w,
+        lost: l,
+        winRate: dec ? Math.round((w / dec) * 100) : null,
+        koRate: dec ? Math.round((l / dec) * 100) : null,
+      };
     });
 
-    return { total, pool, byFase, won, lost, open, winRate, cats, overdue, today, next7, plan, perComm };
+    return { total, pool, byFase, won, lost, open, winRate, koRate, cats, overdue, today, next7, plan, perComm };
   }, [items]);
 
   const faseMax = Math.max(1, ...FASI.map((f) => m.byFase[f] || 0));
@@ -120,11 +129,13 @@ export default function Statistiche() {
       ) : (
         <div className="space-y-5">
           {/* KPI */}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             <Kpi label="Totale" value={m.total.toLocaleString('it-IT')} />
             <Kpi label="Attivi" value={m.open.toLocaleString('it-IT')} color="text-violet-600" />
             <Kpi label="Chiusi" value={m.won.toLocaleString('it-IT')} color="text-emerald-600" />
-            <Kpi label="Tasso chiusura" value={m.winRate === null ? '—' : `${m.winRate}%`} color="text-blue-600" sub="chiusi / (chiusi+K.O.)" />
+            <Kpi label="K.O." value={m.lost.toLocaleString('it-IT')} color="text-rose-600" />
+            <Kpi label="Tasso chiusura" value={m.winRate === null ? '—' : `${m.winRate}%`} color="text-emerald-600" sub="chiusi / (chiusi+K.O.)" />
+            <Kpi label="Tasso K.O." value={m.koRate === null ? '—' : `${m.koRate}%`} color="text-rose-600" sub="K.O. / (chiusi+K.O.)" />
             <Kpi label="In pool" value={m.pool.toLocaleString('it-IT')} color="text-cyan-600" />
             <Kpi label="Follow-up in ritardo" value={m.overdue.toLocaleString('it-IT')} color={m.overdue ? 'text-rose-600' : 'text-slate-900'} />
           </div>
@@ -170,6 +181,7 @@ export default function Statistiche() {
                       <th className="px-3 py-2 text-right font-semibold">Chiusi</th>
                       <th className="px-3 py-2 text-right font-semibold">K.O.</th>
                       <th className="px-3 py-2 text-right font-semibold">Win rate</th>
+                      <th className="px-3 py-2 text-right font-semibold">K.O. %</th>
                       <th className="hidden px-3 py-2 sm:table-cell" />
                     </tr>
                   </thead>
@@ -181,7 +193,8 @@ export default function Statistiche() {
                         <td className="px-3 py-2.5 text-right text-violet-600">{p.open}</td>
                         <td className="px-3 py-2.5 text-right font-semibold text-emerald-600">{p.won}</td>
                         <td className="px-3 py-2.5 text-right text-rose-600">{p.lost}</td>
-                        <td className="px-3 py-2.5 text-right font-semibold">{p.winRate === null ? '—' : `${p.winRate}%`}</td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-emerald-600">{p.winRate === null ? '—' : `${p.winRate}%`}</td>
+                        <td className="px-3 py-2.5 text-right text-rose-600">{p.koRate === null ? '—' : `${p.koRate}%`}</td>
                         <td className="hidden w-40 px-3 py-2.5 sm:table-cell">
                           <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                             <div className="h-full rounded-full bg-slate-800" style={{ width: `${Math.round((p.total / commMax) * 100)}%` }} />
