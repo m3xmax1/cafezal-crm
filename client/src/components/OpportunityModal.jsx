@@ -175,10 +175,26 @@ export default function OpportunityModal({
                 <div>
                   <label className={label}>Telefono</label>
                   <input className={field} value={form.telefono} onChange={(e) => set('telefono', e.target.value)} />
+                  {form.telefono.trim() && (
+                    <a
+                      href={`tel:${form.telefono.replace(/\s+/g, '')}`}
+                      className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      📞 Chiama
+                    </a>
+                  )}
                 </div>
                 <div>
                   <label className={label}>Email</label>
                   <input className={field} value={form.email} onChange={(e) => set('email', e.target.value)} />
+                  {form.email.trim() && (
+                    <a
+                      href={`mailto:${form.email.trim()}`}
+                      className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      ✉️ Scrivi
+                    </a>
+                  )}
                 </div>
                 <div>
                   <label className={label}>Città</label>
@@ -187,6 +203,16 @@ export default function OpportunityModal({
                 <div>
                   <label className={label}>Sito web</label>
                   <input className={field} value={form.sito_web} onChange={(e) => set('sito_web', e.target.value)} />
+                  {form.sito_web.trim() && (
+                    <a
+                      href={/^https?:\/\//i.test(form.sito_web.trim()) ? form.sito_web.trim() : `https://${form.sito_web.trim()}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      🔗 Apri sito
+                    </a>
+                  )}
                 </div>
               </div>
             </div>

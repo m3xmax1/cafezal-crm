@@ -105,6 +105,17 @@ export function fmtDate(dateStr) {
   return d ? `${d}/${m}/${y}` : dateStr;
 }
 
+/** Add n days to a YYYY-MM-DD date (local), returns YYYY-MM-DD. */
+export function addDaysISO(iso, n) {
+  const base = iso || todayISO();
+  const [y, m, d] = String(base).split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + n);
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return `${dt.getFullYear()}-${mm}-${dd}`;
+}
+
 /** Follow-up status relative to today (drives colour + label). */
 export function followupStatus(dateStr) {
   if (!dateStr) return null;

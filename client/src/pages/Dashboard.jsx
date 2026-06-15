@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import { CLOSED_FASI, followupStatus } from '../lib/constants.js';
+import { exportLeadsCsv } from '../lib/exportCsv.js';
 import Layout from '../components/Layout.jsx';
 import Filters from '../components/Filters.jsx';
 import KanbanBoard from '../components/KanbanBoard.jsx';
@@ -39,10 +40,17 @@ export default function Dashboard() {
   }, [load]);
 
   // Client-side search over the loaded set (instant, no extra request).
+  // Matches company, contact, city, phone, email and the planned next action.
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return items;
-    return items.filter((o) => (o.azienda || '').toLowerCase().includes(q));
+    return items.filter((o) =>
+      [o.azienda, o.referente, o.citta, o.telefono, o.email, o.prossima_azione]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(q),
+    );
   }, [items, search]);
 
   const stats = useMemo(() => {
@@ -178,12 +186,22 @@ export default function Dashboard() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cerca azienda…"
+            placeholder="Cerca azienda, referente, città, tel…"
             className="h-9 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
         </div>
         <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
           <Filters value={filters} onChange={setFilters} showCommerciale={isAdmin} />
+          <button
+            onClick={() => exportLeadsCsv(shown)}
+            title="Esporta i lead visibili in CSV"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+            </svg>
+            <span className="hidden sm:inline">Esporta</span>
+          </button>
         </div>
       </div>
 

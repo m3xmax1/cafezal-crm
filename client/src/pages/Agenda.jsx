@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout.jsx';
 import { api } from '../lib/api.js';
-import { ACTIVITY_TIPO_META, CATEGORIA_BADGE, fmtDate } from '../lib/constants.js';
+import { ACTIVITY_TIPO_META, CATEGORIA_BADGE, addDaysISO, fmtDate, todayISO } from '../lib/constants.js';
 
 function daysFromToday(dateStr) {
   const [y, m, d] = String(dateStr).split('-').map(Number);
@@ -32,6 +32,7 @@ export default function Agenda() {
   const [data, setData] = useState({ followups: [], activities: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [busyId, setBusyId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,8 +50,38 @@ export default function Agenda() {
     load();
   }, [load]);
 
-  // Build a single, date-sorted item list. Follow-ups always shown; activities
-  // only from today onward (past ones are history, visible in the lead timeline).
+  // Quick actions on a follow-up (no need to open the lead).
+  async function markDone(it) {
+    setBusyId(it.id);
+    setError('');
+    try {
+      await api.addActivity(it.opportunity_id, {
+        tipo: 'nota',
+        descrizione: `Completato: ${it.text}`,
+        data: todayISO(),
+      });
+      await api.update(it.opportunity_id, { data_prossimo_followup: null, prossima_azione: null });
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function postpone(it, days) {
+    setBusyId(it.id);
+    setError('');
+    try {
+      await api.update(it.opportunity_id, { data_prossimo_followup: addDaysISO(todayISO(), days) });
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   const grouped = useMemo(() => {
     const items = [];
     for (const f of data.followups || []) {
@@ -64,7 +95,6 @@ export default function Agenda() {
         azienda: f.azienda,
         categoria: f.categoria,
         text: f.prossima_azione || 'Follow-up',
-        fase: f.fase_pipeline,
       });
     }
     for (const a of data.activities || []) {
@@ -136,44 +166,77 @@ export default function Agenda() {
                 </div>
                 <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
                   {items.map((it) => (
-                    <Link
+                    <div
                       key={it.id}
-                      to={`/?lead=${it.opportunity_id}`}
-                      className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 transition-colors last:border-0 hover:bg-slate-50"
+                      className="flex items-center gap-3 border-b border-slate-100 px-3 py-3 transition-colors last:border-0 hover:bg-slate-50 sm:px-4"
                     >
-                      <div className="w-16 shrink-0 text-xs font-semibold text-slate-500">{fmtDate(it.date)}</div>
-                      {it.kind === 'activity' ? (
-                        <span
-                          className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-                            (ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).badge
-                          }`}
-                        >
-                          {(ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).label}
-                        </span>
-                      ) : (
-                        <span className="shrink-0 rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-indigo-700">
-                          Follow-up
-                        </span>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="truncate text-sm font-semibold text-slate-800">{it.azienda}</span>
-                          {it.categoria && (
-                            <span
-                              className={`hidden shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase sm:inline ${
-                                CATEGORIA_BADGE[it.categoria] || 'bg-slate-100 text-slate-700'
-                              }`}
-                            >
-                              {it.categoria}
-                            </span>
-                          )}
+                      <Link to={`/?lead=${it.opportunity_id}`} className="flex min-w-0 flex-1 items-center gap-2.5">
+                        <div className="w-12 shrink-0 text-xs font-semibold text-slate-500">{fmtDate(it.date)}</div>
+                        {it.kind === 'activity' ? (
+                          <span
+                            className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
+                              (ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).badge
+                            }`}
+                          >
+                            {(ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).label}
+                          </span>
+                        ) : (
+                          <span className="shrink-0 rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-indigo-700">
+                            Follow-up
+                          </span>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-sm font-semibold text-slate-800">{it.azienda}</span>
+                            {it.categoria && (
+                              <span
+                                className={`hidden shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase sm:inline ${
+                                  CATEGORIA_BADGE[it.categoria] || 'bg-slate-100 text-slate-700'
+                                }`}
+                              >
+                                {it.categoria}
+                              </span>
+                            )}
+                          </div>
+                          {it.text && <p className="truncate text-xs text-slate-500">{it.text}</p>}
                         </div>
-                        {it.text && <p className="truncate text-xs text-slate-500">{it.text}</p>}
-                      </div>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 shrink-0 text-slate-300">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </Link>
+                      </Link>
+
+                      {it.kind === 'followup' ? (
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => markDone(it)}
+                            disabled={busyId === it.id}
+                            className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                          >
+                            Fatto
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => postpone(it, 1)}
+                            disabled={busyId === it.id}
+                            title="Rimanda a domani"
+                            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+                          >
+                            Domani
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => postpone(it, 7)}
+                            disabled={busyId === it.id}
+                            title="Rimanda di 7 giorni"
+                            className="hidden rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 sm:block"
+                          >
+                            +7g
+                          </button>
+                        </div>
+                      ) : (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 shrink-0 text-slate-300">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      )}
+                    </div>
                   ))}
                 </div>
               </section>
