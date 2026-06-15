@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react';
 import { COMMERCIALI, FASI, SENSIBILITY, CATEGORIE } from '../lib/constants.js';
 import ActivityTimeline from './ActivityTimeline.jsx';
 
+// Build a wa.me link from a phone number (defaults to Italy country code).
+function waLink(tel) {
+  const n = String(tel || '').replace(/\D/g, '');
+  if (!n) return '#';
+  return `https://wa.me/${n.startsWith('39') ? n : `39${n}`}`;
+}
+
 const empty = {
   azienda: '',
   referente: '',
@@ -176,12 +183,22 @@ export default function OpportunityModal({
                   <label className={label}>Telefono</label>
                   <input className={field} value={form.telefono} onChange={(e) => set('telefono', e.target.value)} />
                   {form.telefono.trim() && (
-                    <a
-                      href={`tel:${form.telefono.replace(/\s+/g, '')}`}
-                      className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
-                    >
-                      📞 Chiama
-                    </a>
+                    <div className="mt-1 flex items-center gap-3">
+                      <a
+                        href={`tel:${form.telefono.replace(/\s+/g, '')}`}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                      >
+                        📞 Chiama
+                      </a>
+                      <a
+                        href={waLink(form.telefono)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:underline"
+                      >
+                        💬 WhatsApp
+                      </a>
+                    </div>
                   )}
                 </div>
                 <div>

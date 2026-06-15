@@ -21,6 +21,13 @@ export default function KanbanBoard({ items, onCardClick, onMove }) {
     }
   }
 
+  // Quick "advance phase" from a card (linear flow, K.O. excluded).
+  const ADVANCE_ORDER = ['Lead', 'Contattato', 'In trattativa', 'Proposta', 'Chiuso'];
+  function advance(opp) {
+    const i = ADVANCE_ORDER.indexOf(opp.fase_pipeline);
+    if (i >= 0 && i < ADVANCE_ORDER.length - 1) onMove(opp, ADVANCE_ORDER[i + 1]);
+  }
+
   const byFase = Object.fromEntries(FASI.map((f) => [f, []]));
   for (const o of items) {
     if (!byFase[o.fase_pipeline]) byFase[o.fase_pipeline] = [];
@@ -37,7 +44,7 @@ export default function KanbanBoard({ items, onCardClick, onMove }) {
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
         <div className="hidden gap-4 overflow-x-auto pb-4 lg:flex">
           {FASI.map((f) => (
-            <KanbanColumn key={f} fase={f} items={byFase[f] || []} onCardClick={onCardClick} />
+            <KanbanColumn key={f} fase={f} items={byFase[f] || []} onCardClick={onCardClick} onAdvance={advance} />
           ))}
         </div>
       </DndContext>
@@ -72,7 +79,7 @@ export default function KanbanBoard({ items, onCardClick, onMove }) {
 
         <div className="space-y-2.5">
           {mShown.map((o) => (
-            <OpportunityCardStatic key={o.id} opp={o} onClick={() => onCardClick(o)} />
+            <OpportunityCardStatic key={o.id} opp={o} onClick={() => onCardClick(o)} onAdvance={advance} />
           ))}
           {mobileItems.length === 0 && (
             <div className="grid place-items-center rounded-2xl border border-dashed border-slate-200 py-12 text-sm text-slate-400">

@@ -5,7 +5,7 @@ import OpportunityCard from './OpportunityCard.jsx';
 // Cap rendered cards per column for performance with large datasets.
 const CAP = 60;
 
-export default function KanbanColumn({ fase, items, onCardClick }) {
+export default function KanbanColumn({ fase, items, onCardClick, onAdvance }) {
   const { setNodeRef, isOver } = useDroppable({ id: fase });
   const shown = items.slice(0, CAP);
   const extra = items.length - shown.length;
@@ -31,7 +31,7 @@ export default function KanbanColumn({ fase, items, onCardClick }) {
         }`}
       >
         {shown.map((o) => (
-          <OpportunityCard key={o.id} opp={o} onClick={() => onCardClick(o)} />
+          <OpportunityCard key={o.id} opp={o} onClick={() => onCardClick(o)} onAdvance={onAdvance} />
         ))}
 
         {items.length === 0 && (

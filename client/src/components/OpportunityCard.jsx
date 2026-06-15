@@ -2,6 +2,13 @@ import { useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CATEGORIA_BADGE, SENS_DOT, CLOSED_FASI, followupStatus } from '../lib/constants.js';
 
+// Linear progression used by the "advance phase" quick action (K.O. is off-path).
+const ADVANCE_ORDER = ['Lead', 'Contattato', 'In trattativa', 'Proposta', 'Chiuso'];
+function nextFase(f) {
+  const i = ADVANCE_ORDER.indexOf(f);
+  return i >= 0 && i < ADVANCE_ORDER.length - 1 ? ADVANCE_ORDER[i + 1] : null;
+}
+
 function daysUntil(dateStr) {
   if (!dateStr) return null;
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -31,7 +38,7 @@ const BASE_CARD =
   'rounded-xl border border-slate-200 bg-white p-3 shadow-card transition-all duration-200 hover:border-slate-300 hover:shadow-card-hover';
 
 // Inner content shared by the draggable (desktop) and static (mobile) cards.
-function CardBody({ opp }) {
+function CardBody({ opp, onAdvance }) {
   const d = daysUntil(opp.data_scadenza);
   const dueLabel =
     d === null ? null : d < 0 ? `Scaduta da ${Math.abs(d)}g` : d === 0 ? 'Scade oggi' : `Tra ${d}g`;
@@ -106,24 +113,42 @@ function CardBody({ opp }) {
           {dueLabel}
         </div>
       )}
+
+      {onAdvance && nextFase(opp.fase_pipeline) && (
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAdvance(opp);
+          }}
+          title={`Avanza a ${nextFase(opp.fase_pipeline)}`}
+          className="mt-2 inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+          {nextFase(opp.fase_pipeline)}
+        </button>
+      )}
     </>
   );
 }
 
 // Static, fully scrollable card for the mobile list (no drag → touch scrolls).
-export function OpportunityCardStatic({ opp, onClick }) {
+export function OpportunityCardStatic({ opp, onClick, onAdvance }) {
   return (
     <div
       onClick={onClick}
       className={`${BASE_CARD} cursor-pointer active:scale-[0.99]`}
     >
-      <CardBody opp={opp} />
+      <CardBody opp={opp} onAdvance={onAdvance} />
     </div>
   );
 }
 
 // Draggable card for the desktop kanban board.
-export default function OpportunityCard({ opp, onClick }) {
+export default function OpportunityCard({ opp, onClick, onAdvance }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: opp.id });
   const downPos = useRef(null);
 
@@ -152,7 +177,7 @@ export default function OpportunityCard({ opp, onClick }) {
         isDragging ? 'opacity-60 shadow-card-hover' : ''
       }`}
     >
-      <CardBody opp={opp} />
+      <CardBody opp={opp} onAdvance={onAdvance} />
     </div>
   );
 }
