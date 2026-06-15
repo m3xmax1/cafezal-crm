@@ -28,11 +28,18 @@ function bucketOf(days) {
   return 'later';
 }
 
+const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+
 export default function Agenda() {
   const [data, setData] = useState({ followups: [], activities: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
+  const [view, setView] = useState('lista');
+  const [month, setMonth] = useState(() => {
+    const t = new Date();
+    return { y: t.getFullYear(), m: t.getMonth() };
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,16 +57,11 @@ export default function Agenda() {
     load();
   }, [load]);
 
-  // Quick actions on a follow-up (no need to open the lead).
   async function markDone(it) {
     setBusyId(it.id);
     setError('');
     try {
-      await api.addActivity(it.opportunity_id, {
-        tipo: 'nota',
-        descrizione: `Completato: ${it.text}`,
-        data: todayISO(),
-      });
+      await api.addActivity(it.opportunity_id, { tipo: 'nota', descrizione: `Completato: ${it.text}`, data: todayISO() });
       await api.update(it.opportunity_id, { data_prossimo_followup: null, prossima_azione: null });
       await load();
     } catch (e) {
@@ -82,38 +84,19 @@ export default function Agenda() {
     }
   }
 
+  // List view: bucketed items (activities only from today onward).
   const grouped = useMemo(() => {
     const items = [];
     for (const f of data.followups || []) {
       const days = daysFromToday(f.data_prossimo_followup);
-      items.push({
-        kind: 'followup',
-        id: `f-${f.id}`,
-        opportunity_id: f.id,
-        date: f.data_prossimo_followup,
-        days,
-        azienda: f.azienda,
-        categoria: f.categoria,
-        text: f.prossima_azione || 'Follow-up',
-      });
+      items.push({ kind: 'followup', id: `f-${f.id}`, opportunity_id: f.id, date: f.data_prossimo_followup, days, azienda: f.azienda, categoria: f.categoria, text: f.prossima_azione || 'Follow-up' });
     }
     for (const a of data.activities || []) {
       const days = daysFromToday(a.data);
-      if (days < 0) continue; // past activity → history, not agenda
-      items.push({
-        kind: 'activity',
-        id: `a-${a.id}`,
-        opportunity_id: a.opportunity_id,
-        date: a.data,
-        days,
-        azienda: a.azienda,
-        categoria: a.categoria,
-        text: a.descrizione || '',
-        tipo: a.tipo,
-      });
+      if (days < 0) continue;
+      items.push({ kind: 'activity', id: `a-${a.id}`, opportunity_id: a.opportunity_id, date: a.data, days, azienda: a.azienda, categoria: a.categoria, text: a.descrizione || '', tipo: a.tipo });
     }
     items.sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0));
-
     const byBucket = Object.fromEntries(BUCKETS.map((b) => [b.key, []]));
     for (const it of items) byBucket[bucketOf(it.days)].push(it);
     return byBucket;
@@ -121,30 +104,148 @@ export default function Agenda() {
 
   const total = Object.values(grouped).reduce((n, arr) => n + arr.length, 0);
 
+  // Month view: every item keyed by date (includes past, for context).
+  const byDate = useMemo(() => {
+    const map = {};
+    for (const f of data.followups || []) {
+      (map[f.data_prossimo_followup] ||= []).push({ kind: 'followup', opportunity_id: f.id, azienda: f.azienda, text: f.prossima_azione || 'Follow-up' });
+    }
+    for (const a of data.activities || []) {
+      (map[a.data] ||= []).push({ kind: 'activity', opportunity_id: a.opportunity_id, azienda: a.azienda, text: a.descrizione || '', tipo: a.tipo });
+    }
+    return map;
+  }, [data]);
+
+  const cells = useMemo(() => {
+    const { y, m } = month;
+    const startWeekday = (new Date(y, m, 1).getDay() + 6) % 7; // Monday-first
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const out = [];
+    for (let i = 0; i < startWeekday; i++) out.push(null);
+    for (let d = 1; d <= daysInMonth; d++) {
+      out.push({ day: d, dateStr: `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}` });
+    }
+    return out;
+  }, [month]);
+
+  const monthLabel = new Date(month.y, month.m, 1).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+  const today = todayISO();
+
+  const goPrev = () => setMonth(({ y, m }) => (m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 }));
+  const goNext = () => setMonth(({ y, m }) => (m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 }));
+  const goToday = () => {
+    const t = new Date();
+    setMonth({ y: t.getFullYear(), m: t.getMonth() });
+  };
+
+  const segBtn = (active) =>
+    `rounded-md px-3 py-1 text-sm font-medium transition ${active ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'}`;
+
   return (
     <Layout>
-      <div className="mb-5 flex items-end justify-between">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-slate-900">Agenda</h2>
           <p className="text-sm text-slate-500">Follow-up e appuntamenti in programma.</p>
         </div>
-        <Link
-          to="/"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-          <span className="hidden sm:inline">Pipeline</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
+            <button onClick={() => setView('lista')} className={segBtn(view === 'lista')}>
+              Lista
+            </button>
+            <button onClick={() => setView('mese')} className={segBtn(view === 'mese')}>
+              Mese
+            </button>
+          </div>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="hidden sm:inline">Pipeline</span>
+          </Link>
+        </div>
       </div>
 
-      {error && (
-        <div className="mb-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-      )}
+      {error && <div className="mb-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
       {loading ? (
         <div className="grid place-items-center py-20 text-slate-400">Caricamento…</div>
+      ) : view === 'mese' ? (
+        /* ── Vista calendario mensile ── */
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <button onClick={goPrev} aria-label="Mese precedente" className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <h3 className="text-sm font-bold capitalize text-slate-800">{monthLabel}</h3>
+            <div className="flex items-center gap-1">
+              <button onClick={goToday} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+                Oggi
+              </button>
+              <button onClick={goNext} aria-label="Mese successivo" className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 shadow-card">
+            {WEEKDAYS.map((w) => (
+              <div key={w} className="bg-slate-50 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                {w}
+              </div>
+            ))}
+            {cells.map((c, i) => {
+              if (!c) return <div key={`b-${i}`} className="min-h-[72px] bg-slate-50/60 sm:min-h-[100px]" />;
+              const items = byDate[c.dateStr] || [];
+              const isToday = c.dateStr === today;
+              return (
+                <div key={c.dateStr} className="min-h-[72px] bg-white p-1 sm:min-h-[100px]">
+                  <div className="mb-1 flex justify-end">
+                    <span
+                      className={`grid h-5 w-5 place-items-center rounded-full text-[11px] font-semibold ${
+                        isToday ? 'bg-blue-600 text-white' : 'text-slate-500'
+                      }`}
+                    >
+                      {c.day}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    {items.slice(0, 3).map((it, idx) => {
+                      const cls =
+                        it.kind === 'followup'
+                          ? 'bg-indigo-100 text-indigo-700'
+                          : (ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).badge;
+                      return (
+                        <Link
+                          key={idx}
+                          to={`/?lead=${it.opportunity_id}`}
+                          title={`${it.azienda}${it.text ? ' · ' + it.text : ''}`}
+                          className={`block truncate rounded px-1 py-0.5 text-[10px] font-medium ${cls}`}
+                        >
+                          {it.azienda}
+                        </Link>
+                      );
+                    })}
+                    {items.length > 3 && (
+                      <div className="px-1 text-[10px] font-medium text-slate-400">+{items.length - 3}</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-3 flex items-center gap-4 text-xs text-slate-500">
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-indigo-200" /> Follow-up</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-emerald-200" /> Attività/appuntamenti</span>
+          </div>
+        </div>
       ) : total === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center">
           <p className="text-sm font-medium text-slate-600">Nessun follow-up o appuntamento in programma.</p>
@@ -153,6 +254,7 @@ export default function Agenda() {
           </p>
         </div>
       ) : (
+        /* ── Vista lista ── */
         <div className="space-y-6">
           {BUCKETS.map((b) => {
             const items = grouped[b.key];
@@ -173,11 +275,7 @@ export default function Agenda() {
                       <Link to={`/?lead=${it.opportunity_id}`} className="flex min-w-0 flex-1 items-center gap-2.5">
                         <div className="w-12 shrink-0 text-xs font-semibold text-slate-500">{fmtDate(it.date)}</div>
                         {it.kind === 'activity' ? (
-                          <span
-                            className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-                              (ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).badge
-                            }`}
-                          >
+                          <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase ${(ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).badge}`}>
                             {(ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).label}
                           </span>
                         ) : (
@@ -189,11 +287,7 @@ export default function Agenda() {
                           <div className="flex items-center gap-2">
                             <span className="truncate text-sm font-semibold text-slate-800">{it.azienda}</span>
                             {it.categoria && (
-                              <span
-                                className={`hidden shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase sm:inline ${
-                                  CATEGORIA_BADGE[it.categoria] || 'bg-slate-100 text-slate-700'
-                                }`}
-                              >
+                              <span className={`hidden shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase sm:inline ${CATEGORIA_BADGE[it.categoria] || 'bg-slate-100 text-slate-700'}`}>
                                 {it.categoria}
                               </span>
                             )}
@@ -204,30 +298,13 @@ export default function Agenda() {
 
                       {it.kind === 'followup' ? (
                         <div className="flex shrink-0 items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => markDone(it)}
-                            disabled={busyId === it.id}
-                            className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
-                          >
+                          <button type="button" onClick={() => markDone(it)} disabled={busyId === it.id} className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50">
                             Fatto
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => postpone(it, 1)}
-                            disabled={busyId === it.id}
-                            title="Rimanda a domani"
-                            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
-                          >
+                          <button type="button" onClick={() => postpone(it, 1)} disabled={busyId === it.id} title="Rimanda a domani" className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50">
                             Domani
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => postpone(it, 7)}
-                            disabled={busyId === it.id}
-                            title="Rimanda di 7 giorni"
-                            className="hidden rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 sm:block"
-                          >
+                          <button type="button" onClick={() => postpone(it, 7)} disabled={busyId === it.id} title="Rimanda di 7 giorni" className="hidden rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 sm:block">
                             +7g
                           </button>
                         </div>
