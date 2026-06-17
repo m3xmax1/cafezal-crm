@@ -23,7 +23,7 @@ export const CATEGORIE = [
 // (@cafezal.it) resolve to the same commercial, so either can be used to log in.
 export const EMAIL_TO_COMMERCIALE = {
   'laura@cafezal.com': 'Laura',
-  'laura@cafezal.it': 'Laura',
+  'l.magnago@cafezal.it': 'Laura',
   'massimo@cafezal.com': 'Massimo',
   'm.rotunno@cafezal.it': 'Massimo',
   'gabriele@cafezal.com': 'Gabriele',
@@ -32,7 +32,7 @@ export const EMAIL_TO_COMMERCIALE = {
 
 // commerciale -> real inbox (used by the reminder + monthly report jobs).
 export const COMMERCIALE_TO_EMAIL = {
-  Laura: 'laura@cafezal.it', // placeholder finché Laura non fornisce l'indirizzo definitivo
+  Laura: 'l.magnago@cafezal.it',
   Massimo: 'm.rotunno@cafezal.it',
   Gabriele: 'sales@cafezal.it',
 };
