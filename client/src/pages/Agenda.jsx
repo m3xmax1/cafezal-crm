@@ -28,6 +28,20 @@ function bucketOf(days) {
   return 'later';
 }
 
+// "Realizzate": logged activities (today and earlier), most recent first.
+const PAST_BUCKETS = [
+  { key: 'oggi', title: 'Oggi', dot: 'bg-amber-500', tone: 'text-amber-600' },
+  { key: 'ieri', title: 'Ieri', dot: 'bg-slate-400', tone: 'text-slate-600' },
+  { key: 'sett', title: 'Ultimi 7 giorni', dot: 'bg-slate-400', tone: 'text-slate-600' },
+  { key: 'prima', title: 'Prima', dot: 'bg-slate-300', tone: 'text-slate-500' },
+];
+function pastBucketOf(days) {
+  if (days === 0) return 'oggi';
+  if (days === -1) return 'ieri';
+  if (days >= -7) return 'sett';
+  return 'prima';
+}
+
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 
 export default function Agenda() {
@@ -36,6 +50,7 @@ export default function Agenda() {
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [view, setView] = useState('lista');
+  const [mostra, setMostra] = useState('future'); // future | realizzate
   const [month, setMonth] = useState(() => {
     const t = new Date();
     return { y: t.getFullYear(), m: t.getMonth() };
@@ -104,6 +119,28 @@ export default function Agenda() {
 
   const total = Object.values(grouped).reduce((n, arr) => n + arr.length, 0);
 
+  // "Realizzate" view: logged activities up to today, most recent first.
+  const realizzate = useMemo(() => {
+    const list = (data.activities || [])
+      .map((a) => ({
+        kind: 'activity',
+        id: `a-${a.id}`,
+        opportunity_id: a.opportunity_id,
+        date: a.data,
+        days: daysFromToday(a.data),
+        azienda: a.azienda,
+        categoria: a.categoria,
+        text: a.descrizione || '',
+        tipo: a.tipo,
+      }))
+      .filter((it) => it.days <= 0);
+    list.sort((x, y) => (x.date > y.date ? -1 : x.date < y.date ? 1 : 0));
+    const byB = Object.fromEntries(PAST_BUCKETS.map((b) => [b.key, []]));
+    for (const it of list) byB[pastBucketOf(it.days)].push(it);
+    return byB;
+  }, [data]);
+  const totalReal = Object.values(realizzate).reduce((n, arr) => n + arr.length, 0);
+
   // Month view: every item keyed by date (includes past, for context).
   const byDate = useMemo(() => {
     const map = {};
@@ -148,7 +185,17 @@ export default function Agenda() {
           <h2 className="text-xl font-bold tracking-tight text-slate-900">Agenda</h2>
           <p className="text-sm text-slate-500">Follow-up e appuntamenti in programma.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {view === 'lista' && (
+            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
+              <button onClick={() => setMostra('future')} className={segBtn(mostra === 'future')}>
+                Future
+              </button>
+              <button onClick={() => setMostra('realizzate')} className={segBtn(mostra === 'realizzate')}>
+                Realizzate
+              </button>
+            </div>
+          )}
           <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
             <button onClick={() => setView('lista')} className={segBtn(view === 'lista')}>
               Lista
@@ -246,6 +293,50 @@ export default function Agenda() {
             <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-emerald-200" /> Attività/appuntamenti</span>
           </div>
         </div>
+      ) : mostra === 'realizzate' ? (
+        totalReal === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center">
+            <p className="text-sm font-medium text-slate-600">Nessuna attività registrata.</p>
+            <p className="mt-1 text-sm text-slate-400">Le attività che logghi nelle schede dei lead compaiono qui.</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {PAST_BUCKETS.map((b) => {
+              const items = realizzate[b.key];
+              if (!items.length) return null;
+              return (
+                <section key={b.key}>
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 rounded-full ${b.dot}`} />
+                    <h3 className={`text-sm font-bold ${b.tone}`}>{b.title}</h3>
+                    <span className="text-xs font-medium text-slate-400">{items.length}</span>
+                  </div>
+                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+                    {items.map((it) => (
+                      <Link
+                        key={it.id}
+                        to={`/?lead=${it.opportunity_id}`}
+                        className="flex items-center gap-3 border-b border-slate-100 px-3 py-3 transition-colors last:border-0 hover:bg-slate-50 sm:px-4"
+                      >
+                        <div className="w-12 shrink-0 text-xs font-semibold text-slate-500">{fmtDate(it.date)}</div>
+                        <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase ${(ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).badge}`}>
+                          {(ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).label}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-slate-800">{it.azienda}</span>
+                          {it.text && <p className="truncate text-xs text-slate-500">{it.text}</p>}
+                        </div>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 shrink-0 text-slate-300">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        )
       ) : total === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center">
           <p className="text-sm font-medium text-slate-600">Nessun follow-up o appuntamento in programma.</p>

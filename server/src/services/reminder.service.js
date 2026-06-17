@@ -65,17 +65,19 @@ export async function runDailyReminders(options = {}) {
     const upcoming = [];
     let daPianificare = 0;
 
+    // "To plan" nudge applies only to still-open leads with no next step.
     for (const l of open) {
+      if (!(l.data_prossimo_followup || '').slice(0, 10)) daPianificare += 1;
+    }
+    // Scheduled follow-ups include won ("Chiuso") clients (post-sale / reorder);
+    // only lost ("K.O.") leads are excluded.
+    for (const l of leads) {
+      if (l.fase_pipeline === 'K.O.') continue;
       const f = (l.data_prossimo_followup || '').slice(0, 10);
-      if (!f) {
-        daPianificare += 1;
-      } else if (f < today) {
-        overdue.push(l);
-      } else if (f === today) {
-        dueToday.push(l);
-      } else if (f <= until) {
-        upcoming.push(l);
-      }
+      if (!f) continue;
+      if (f < today) overdue.push(l);
+      else if (f === today) dueToday.push(l);
+      else if (f <= until) upcoming.push(l);
     }
 
     const recap = Object.fromEntries(FASI.map((ph) => [ph, 0]));

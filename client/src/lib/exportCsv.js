@@ -13,7 +13,7 @@ const COLS = [
   ['citta', 'Città'],
   ['sito_web', 'Sito'],
   ['sensibility', 'Sensibility'],
-  ['quantita_minima_kg', 'Kg'],
+  ['quantita_minima_kg', 'Kg/eventi'],
   ['valore_stimato', 'Valore stimato'],
   ['prossima_azione', 'Prossima azione'],
   ['data_prossimo_followup', 'Prossimo follow-up'],

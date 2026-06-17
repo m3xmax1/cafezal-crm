@@ -48,22 +48,28 @@ function Panel({ title, children }) {
 }
 
 export default function Statistiche() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, commerciale } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Admin sees everything; a commercial sees only their own contacts (not the pool).
   useEffect(() => {
     let active = true;
+    setLoading(true);
     api
       .list({})
-      .then((d) => active && setItems(d || []))
+      .then((d) => {
+        if (!active) return;
+        const all = d || [];
+        setItems(isAdmin ? all : all.filter((o) => o.commerciale_assegnato === commerciale));
+      })
       .catch((e) => active && setError(e.message))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, []);
+  }, [isAdmin, commerciale]);
 
   const m = useMemo(() => {
     const total = items.length;
@@ -153,7 +159,7 @@ export default function Statistiche() {
     <Layout>
       <div className="mb-5">
         <h2 className="text-xl font-bold tracking-tight text-slate-900">Statistiche</h2>
-        <p className="text-sm text-slate-500">Andamento della pipeline {isAdmin ? '(tutti i commerciali)' : '(i tuoi lead e il pool)'}.</p>
+        <p className="text-sm text-slate-500">Andamento della pipeline {isAdmin ? '(tutti i commerciali)' : '(i tuoi contatti)'}.</p>
       </div>
 
       {error && (

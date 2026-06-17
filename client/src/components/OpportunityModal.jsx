@@ -314,7 +314,7 @@ export default function OpportunityModal({
               </div>
 
               <div>
-                <label className={label}>Quantità minima (kg)</label>
+                <label className={label}>Quantità (Kg / n. eventi)</label>
                 <input
                   type="number"
                   min="0"
@@ -405,6 +405,11 @@ export default function OpportunityModal({
                   />
                 </div>
               </div>
+              {form.fase_pipeline === 'Chiuso' && (
+                <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                  💡 Cliente acquisito: imposta un follow-up post-vendita (es. controllo riordino) — comparirà in Agenda.
+                </p>
+              )}
             </div>
           </div>
 

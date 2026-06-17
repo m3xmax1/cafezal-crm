@@ -92,7 +92,9 @@ export async function getAgenda(user, { from, to } = {}) {
   if (to) fq = fq.lte('data_prossimo_followup', to);
   const { data: fData, error: fErr } = await fq;
   if (fErr) throw fErr;
-  const followups = (fData || []).filter((o) => !CLOSED_FASI.includes(o.fase_pipeline));
+  // Include won ("Chiuso") clients that have a scheduled follow-up (e.g. post-sale
+  // / reorder check-in); only lost ("K.O.") leads are excluded from the agenda.
+  const followups = (fData || []).filter((o) => o.fase_pipeline !== 'K.O.');
 
   // Activities (history + planned appointments), with their parent lead embedded.
   let aq = db
@@ -136,8 +138,37 @@ export async function getOpportunity(user, id) {
   return data;
 }
 
+/**
+ * Find an existing lead with the same company name (case/accent-insensitive).
+ * Returns the matching row (id, azienda, commerciale_assegnato) or null.
+ */
+export async function findDuplicate(azienda, excludeId = null) {
+  const a = (azienda || '').toString().trim();
+  if (!a) return null;
+  const esc = a.replace(/[%_\\]/g, (m) => `\\${m}`); // exact, case-insensitive
+  const { data, error } = await db
+    .from(TABLE)
+    .select('id, azienda, commerciale_assegnato')
+    .ilike('azienda', esc)
+    .limit(50);
+  if (error) throw error;
+  const key = norm(a);
+  return (data || []).find((d) => d.id !== excludeId && norm(d.azienda) === key) || null;
+}
+
 export async function createOpportunity(user, payload) {
   const row = sanitize(payload, { partial: false });
+
+  // Duplicate guard: block a new lead whose company already exists, telling the
+  // user who manages it (or that it is sitting in the shared pool).
+  const dup = await findDuplicate(row.azienda);
+  if (dup) {
+    const who = dup.commerciale_assegnato
+      ? `è già gestito da ${dup.commerciale_assegnato}`
+      : 'è già presente nel pool (non assegnato)';
+    throw httpError(`Esiste già un lead "${dup.azienda}": ${who}.`, 409);
+  }
+
   // A non-admin commercial can only create opportunities assigned to themselves.
   if (!user.isAdmin && user.commerciale) {
     row.commerciale_assegnato = user.commerciale;

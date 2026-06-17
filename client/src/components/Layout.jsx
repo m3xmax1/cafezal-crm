@@ -35,11 +35,9 @@ export default function Layout({ children, right }) {
               <NavLink to="/mappa" className={navCls}>
                 Mappa
               </NavLink>
-              {isAdmin && (
-                <NavLink to="/statistiche" className={navCls}>
-                  Statistiche
-                </NavLink>
-              )}
+              <NavLink to="/statistiche" className={navCls}>
+                Statistiche
+              </NavLink>
             </nav>
           </div>
 

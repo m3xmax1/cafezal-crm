@@ -88,7 +88,7 @@ function CardBody({ opp, onAdvance }) {
             Macchina
           </span>
         )}
-        {opp.quantita_minima_kg != null && <span>{opp.quantita_minima_kg} kg</span>}
+        {opp.quantita_minima_kg != null && <span>{opp.quantita_minima_kg} Kg/ev.</span>}
         {opp.valore_stimato != null && (
           <span className="font-semibold text-slate-700">{fmtEuro(opp.valore_stimato)}</span>
         )}
