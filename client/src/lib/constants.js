@@ -81,6 +81,32 @@ export const FASE_ACCENT = {
 
 export const CLOSED_FASI = ['Chiuso', 'K.O.'];
 
+// Win probability per phase → weighted pipeline / forecast.
+export const FASE_PROBABILITA = {
+  Lead: 0.1,
+  Contattato: 0.25,
+  'In trattativa': 0.5,
+  Proposta: 0.75,
+  Chiuso: 1,
+  'K.O.': 0,
+};
+
+// Suggested close reasons (free text still allowed via datalist).
+export const MOTIVI_VINTO = ['Prezzo competitivo', 'Qualità prodotto', 'Relazione/fiducia', 'Campione convincente'];
+export const MOTIVI_PERSO = ['Prezzo troppo alto', 'Scelto un concorrente', 'Non interessato', 'Budget assente', 'Tempistiche', 'Nessuna risposta'];
+
+export function fmtEuro(n) {
+  return `€ ${(Number(n) || 0).toLocaleString('it-IT')}`;
+}
+
+// Whole days since a timestamp (for "stale lead" detection). null if unknown.
+export function daysSince(tsStr) {
+  if (!tsStr) return null;
+  const d = new Date(tsStr);
+  if (Number.isNaN(d.getTime())) return null;
+  return Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+
 // Activity timeline types
 export const ACTIVITY_TIPI = ['chiamata', 'email', 'meeting', 'nota', 'altro'];
 export const ACTIVITY_TIPO_META = {

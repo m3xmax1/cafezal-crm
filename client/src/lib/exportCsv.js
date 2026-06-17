@@ -14,9 +14,11 @@ const COLS = [
   ['sito_web', 'Sito'],
   ['sensibility', 'Sensibility'],
   ['quantita_minima_kg', 'Kg'],
+  ['valore_stimato', 'Valore stimato'],
   ['prossima_azione', 'Prossima azione'],
   ['data_prossimo_followup', 'Prossimo follow-up'],
   ['data_scadenza', 'Scadenza'],
+  ['motivo_chiusura', 'Motivo chiusura'],
   ['note', 'Note'],
 ];
 

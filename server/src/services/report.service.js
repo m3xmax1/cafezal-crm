@@ -1,6 +1,6 @@
 import { db } from '../config/supabase.js';
 import { config } from '../config/env.js';
-import { COMMERCIALI, FASI } from '../lib/constants.js';
+import { COMMERCIALI, FASI, FASE_PROBABILITA } from '../lib/constants.js';
 import { buildMonthlyReportEmail } from '../lib/reportTemplate.js';
 import { sendMail } from '../lib/mailer.js';
 
@@ -14,7 +14,7 @@ async function fetchAll() {
     const { data, error } = await db
       .from('opportunities')
       .select(
-        'commerciale_assegnato,fase_pipeline,categoria,quantita_minima_kg,data_ultima_modifica,sensibility,macchina',
+        'commerciale_assegnato,fase_pipeline,categoria,quantita_minima_kg,data_ultima_modifica,sensibility,macchina,valore_stimato',
       )
       .order('id', { ascending: true })
       .range(from, from + PAGE - 1);
@@ -87,6 +87,19 @@ export async function runMonthlyReport(options = {}) {
   const open = total - won - lost;
   const updatedThisMonth = rows.filter(inMonth).length;
 
+  // Deal value: open pipeline, probability-weighted forecast, and won value.
+  let pipelineValue = 0;
+  let weightedForecast = 0;
+  let wonValue = 0;
+  for (const o of rows) {
+    const v = Number(o.valore_stimato) || 0;
+    if (o.fase_pipeline === 'Chiuso') wonValue += v;
+    else if (o.fase_pipeline !== 'K.O.') {
+      pipelineValue += v;
+      weightedForecast += v * (FASE_PROBABILITA[o.fase_pipeline] ?? 0);
+    }
+  }
+
   // Per-commercial breakdown.
   const perCommercial = COMMERCIALI.map((c) => {
     const mine = rows.filter((o) => o.commerciale_assegnato === c);
@@ -127,6 +140,9 @@ export async function runMonthlyReport(options = {}) {
     won,
     lost,
     updatedThisMonth,
+    pipelineValue: Math.round(pipelineValue),
+    weightedForecast: Math.round(weightedForecast),
+    wonValue: Math.round(wonValue),
     byPhase,
     perCommercial,
     topCategories,

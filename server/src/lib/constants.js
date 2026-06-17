@@ -42,3 +42,13 @@ export const CLOSED_FASI = ['Chiuso', 'K.O.'];
 
 // Activity timeline entry types (manual log: calls, emails, meetings, notes).
 export const ACTIVITY_TIPI = ['chiamata', 'email', 'meeting', 'nota', 'altro'];
+
+// Win probability per phase → weighted pipeline / forecast (Pipedrive-style).
+export const FASE_PROBABILITA = {
+  Lead: 0.1,
+  Contattato: 0.25,
+  'In trattativa': 0.5,
+  Proposta: 0.75,
+  Chiuso: 1,
+  'K.O.': 0,
+};

@@ -164,6 +164,22 @@ export async function updateOpportunity(user, id, payload) {
 
   const { data, error } = await db.from(TABLE).update(row).eq('id', id).select().single();
   if (error) throw error;
+
+  // Record phase transitions for funnel/velocity analytics (best-effort: never
+  // block the update if the history table is missing or the insert fails).
+  if (row.fase_pipeline && row.fase_pipeline !== existing.fase_pipeline) {
+    try {
+      await db.from('phase_changes').insert({
+        opportunity_id: id,
+        da_fase: existing.fase_pipeline,
+        a_fase: row.fase_pipeline,
+        commerciale: user.commerciale || user.email || null,
+      });
+    } catch {
+      /* analytics logging is non-critical */
+    }
+  }
+
   return data;
 }
 
@@ -246,6 +262,22 @@ function sanitize(payload = {}, { partial }) {
 
   if (payload.data_prossimo_followup !== undefined) {
     out.data_prossimo_followup = payload.data_prossimo_followup ? payload.data_prossimo_followup : null;
+  }
+
+  if (payload.valore_stimato !== undefined) {
+    const v = payload.valore_stimato;
+    if (v === null || v === '') {
+      out.valore_stimato = null;
+    } else {
+      const n = Number(v);
+      if (Number.isNaN(n)) throw httpError('valore_stimato deve essere un numero', 400);
+      out.valore_stimato = n;
+    }
+  }
+
+  if (payload.motivo_chiusura !== undefined) {
+    out.motivo_chiusura =
+      payload.motivo_chiusura === null || payload.motivo_chiusura === '' ? null : String(payload.motivo_chiusura);
   }
 
   return out;

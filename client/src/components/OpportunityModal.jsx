@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { COMMERCIALI, FASI, SENSIBILITY, CATEGORIE } from '../lib/constants.js';
+import { COMMERCIALI, FASI, SENSIBILITY, CATEGORIE, CLOSED_FASI, MOTIVI_VINTO, MOTIVI_PERSO } from '../lib/constants.js';
 import ActivityTimeline from './ActivityTimeline.jsx';
 
 // Build a wa.me link from a phone number (defaults to Italy country code).
@@ -22,7 +22,9 @@ const empty = {
   fase_pipeline: 'Lead',
   macchina: false,
   quantita_minima_kg: '',
+  valore_stimato: '',
   sensibility: 'mid',
+  motivo_chiusura: '',
   prossima_azione: '',
   data_prossimo_followup: '',
   note: '',
@@ -59,7 +61,9 @@ export default function OpportunityModal({
         fase_pipeline: opp.fase_pipeline || 'Lead',
         macchina: !!opp.macchina,
         quantita_minima_kg: opp.quantita_minima_kg ?? '',
+        valore_stimato: opp.valore_stimato ?? '',
         sensibility: opp.sensibility || 'mid',
+        motivo_chiusura: opp.motivo_chiusura || '',
         prossima_azione: opp.prossima_azione || '',
         data_prossimo_followup: opp.data_prossimo_followup || '',
         note: opp.note || '',
@@ -89,8 +93,10 @@ export default function OpportunityModal({
         commerciale_assegnato: form.commerciale_assegnato || null,
         categoria: form.categoria || null,
         quantita_minima_kg: form.quantita_minima_kg === '' ? null : Number(form.quantita_minima_kg),
+        valore_stimato: form.valore_stimato === '' ? null : Number(form.valore_stimato),
         data_scadenza: form.data_scadenza || null,
         data_prossimo_followup: form.data_prossimo_followup || null,
+        motivo_chiusura: form.motivo_chiusura || null,
         note: form.note || null,
       };
       await onSave(payload, opp?.id);
@@ -319,6 +325,19 @@ export default function OpportunityModal({
                 />
               </div>
 
+              <div>
+                <label className={label}>Valore stimato (€)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  className={field}
+                  placeholder="Valore della trattativa"
+                  value={form.valore_stimato}
+                  onChange={(e) => set('valore_stimato', e.target.value)}
+                />
+              </div>
+
               <div className="flex items-end">
                 <label className="flex items-center gap-2 text-sm text-slate-700">
                   <input
@@ -331,6 +350,26 @@ export default function OpportunityModal({
                 </label>
               </div>
             </div>
+
+            {CLOSED_FASI.includes(form.fase_pipeline) && (
+              <div className="mt-4">
+                <label className={label}>
+                  Motivo {form.fase_pipeline === 'Chiuso' ? 'della vittoria' : 'della perdita'}
+                </label>
+                <input
+                  className={field}
+                  list="motivi-chiusura"
+                  value={form.motivo_chiusura}
+                  onChange={(e) => set('motivo_chiusura', e.target.value)}
+                  placeholder="Perché si è chiuso così?"
+                />
+                <datalist id="motivi-chiusura">
+                  {(form.fase_pipeline === 'Chiuso' ? MOTIVI_VINTO : MOTIVI_PERSO).map((m) => (
+                    <option key={m} value={m} />
+                  ))}
+                </datalist>
+              </div>
+            )}
           </div>
 
           {/* ── Prossimo passo ── */}

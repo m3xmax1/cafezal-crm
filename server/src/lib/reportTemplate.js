@@ -80,6 +80,14 @@ export function buildMonthlyReportEmail(s) {
       <table style="width:100%;border-collapse:collapse;"><tr>${cards1}</tr></table>
       <table style="width:100%;border-collapse:collapse;"><tr>${cards2}</tr></table>
 
+      <h2 style="font-size:15px;margin:22px 0 8px;color:#334155;">Valore (€)</h2>
+      <table style="width:100%;border-collapse:collapse;"><tr>
+        ${statCard('Pipeline aperta', `€ ${(s.pipelineValue || 0).toLocaleString('it-IT')}`, '#2563eb')}
+        ${statCard('Forecast ponderato', `€ ${(s.weightedForecast || 0).toLocaleString('it-IT')}`, '#7c3aed')}
+        ${statCard('Vinto', `€ ${(s.wonValue || 0).toLocaleString('it-IT')}`, '#16a34a')}
+      </tr></table>
+      <p style="margin:6px 0 0;color:#94a3b8;font-size:12px;">Forecast ponderato = valore stimato × probabilità della fase.</p>
+
       <p style="margin:16px 0 0;padding:12px 14px;background:#eff6ff;border:1px solid #dbeafe;border-radius:10px;font-size:14px;color:#1e3a8a;">
         🗓️ <strong>${s.updatedThisMonth}</strong> lead aggiornati/lavorati nel mese di ${escapeHtml(s.monthLabel)}.
         Restano <strong>${s.pool}</strong> lead nel pool ancora da prendere in carico.

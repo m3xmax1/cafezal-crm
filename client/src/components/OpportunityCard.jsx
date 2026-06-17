@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { CATEGORIA_BADGE, SENS_DOT, CLOSED_FASI, followupStatus } from '../lib/constants.js';
+import { CATEGORIA_BADGE, SENS_DOT, CLOSED_FASI, followupStatus, fmtEuro } from '../lib/constants.js';
 
 // Linear progression used by the "advance phase" quick action (K.O. is off-path).
 const ADVANCE_ORDER = ['Lead', 'Contattato', 'In trattativa', 'Proposta', 'Chiuso'];
@@ -89,6 +89,9 @@ function CardBody({ opp, onAdvance }) {
           </span>
         )}
         {opp.quantita_minima_kg != null && <span>{opp.quantita_minima_kg} kg</span>}
+        {opp.valore_stimato != null && (
+          <span className="font-semibold text-slate-700">{fmtEuro(opp.valore_stimato)}</span>
+        )}
       </div>
 
       {fu && (
