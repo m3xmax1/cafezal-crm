@@ -123,7 +123,25 @@ export async function getAgenda(user, { from, to } = {}) {
       data: a.data,
     }));
 
-  return { followups, activities };
+  // Reorders (won clients on a cadence). Guarded: returns [] if the columns are
+  // not present yet (migration not applied), so the agenda never breaks.
+  let reorders = [];
+  try {
+    let rq = db
+      .from(TABLE)
+      .select('id, azienda, categoria, fase_pipeline, commerciale_assegnato, prossimo_riordino, cadenza_riordino_giorni')
+      .not('prossimo_riordino', 'is', null)
+      .order('prossimo_riordino', { ascending: true });
+    rq = applyScope(rq, user);
+    if (from) rq = rq.gte('prossimo_riordino', from);
+    if (to) rq = rq.lte('prossimo_riordino', to);
+    const { data: rData, error: rErr } = await rq;
+    if (!rErr) reorders = rData || [];
+  } catch {
+    reorders = [];
+  }
+
+  return { followups, activities, reorders };
 }
 
 export async function getOpportunity(user, id) {
@@ -309,6 +327,21 @@ function sanitize(payload = {}, { partial }) {
   if (payload.motivo_chiusura !== undefined) {
     out.motivo_chiusura =
       payload.motivo_chiusura === null || payload.motivo_chiusura === '' ? null : String(payload.motivo_chiusura);
+  }
+
+  if (payload.cadenza_riordino_giorni !== undefined) {
+    const v = payload.cadenza_riordino_giorni;
+    if (v === null || v === '') {
+      out.cadenza_riordino_giorni = null;
+    } else {
+      const n = parseInt(v, 10);
+      if (Number.isNaN(n) || n < 0) throw httpError('cadenza_riordino_giorni non valida', 400);
+      out.cadenza_riordino_giorni = n;
+    }
+  }
+
+  if (payload.prossimo_riordino !== undefined) {
+    out.prossimo_riordino = payload.prossimo_riordino ? payload.prossimo_riordino : null;
   }
 
   return out;

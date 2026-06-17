@@ -19,4 +19,10 @@ router.get('/:id/activities', ctrl.listActivities);
 router.post('/:id/activities', ctrl.addActivity);
 router.delete('/:id/activities/:actId', ctrl.deleteActivity);
 
+// Campionature (nested under a lead)
+router.get('/:id/samples', ctrl.listSamples);
+router.post('/:id/samples', ctrl.addSample);
+router.patch('/:id/samples/:sampleId', ctrl.updateSample);
+router.delete('/:id/samples/:sampleId', ctrl.deleteSample);
+
 export default router;

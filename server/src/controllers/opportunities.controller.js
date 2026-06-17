@@ -1,5 +1,6 @@
 import * as service from '../services/opportunities.service.js';
 import * as activities from '../services/activities.service.js';
+import * as samples from '../services/samples.service.js';
 
 export async function list(req, res, next) {
   try {
@@ -100,6 +101,49 @@ export async function deleteActivity(req, res, next) {
   try {
     await activities.deleteActivity(req.user, req.params.id, req.params.actId);
     res.status(204).send();
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function listSamples(req, res, next) {
+  try {
+    res.json(await samples.listSamples(req.user, req.params.id));
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function addSample(req, res, next) {
+  try {
+    res.status(201).json(await samples.addSample(req.user, req.params.id, req.body || {}));
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function updateSample(req, res, next) {
+  try {
+    const data = await samples.updateSample(req.user, req.params.id, req.params.sampleId, req.body || {});
+    if (!data) return res.status(404).json({ error: 'Not found' });
+    return res.json(data);
+  } catch (e) {
+    return next(e);
+  }
+}
+
+export async function deleteSample(req, res, next) {
+  try {
+    await samples.deleteSample(req.user, req.params.id, req.params.sampleId);
+    res.status(204).send();
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function samplesOverview(req, res, next) {
+  try {
+    res.json(await samples.getSamplesOverview(req.user));
   } catch (e) {
     next(e);
   }
