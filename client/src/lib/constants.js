@@ -109,6 +109,23 @@ export function daysSince(tsStr) {
 
 // Activity timeline types
 export const ACTIVITY_TIPI = ['chiamata', 'email', 'meeting', 'nota', 'altro'];
+
+// Coffee sample outcomes
+export const SAMPLE_ESITI = ['in_attesa', 'convertito', 'non_convertito'];
+export const SAMPLE_ESITO_META = {
+  in_attesa: { label: 'In attesa', badge: 'bg-amber-100 text-amber-800' },
+  convertito: { label: 'Convertito', badge: 'bg-emerald-100 text-emerald-800' },
+  non_convertito: { label: 'Non convertito', badge: 'bg-rose-100 text-rose-800' },
+};
+
+// Reorder cadence options (won clients)
+export const CADENZA_OPZIONI = [
+  { v: '', label: 'Nessuna' },
+  { v: 30, label: 'Ogni 30 giorni' },
+  { v: 60, label: 'Ogni 60 giorni' },
+  { v: 90, label: 'Ogni 90 giorni' },
+  { v: 180, label: 'Ogni 6 mesi' },
+];
 export const ACTIVITY_TIPO_META = {
   chiamata: { label: 'Chiamata', badge: 'bg-blue-100 text-blue-800', icon: '📞' },
   email: { label: 'Email', badge: 'bg-violet-100 text-violet-800', icon: '✉️' },

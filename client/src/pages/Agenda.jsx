@@ -90,7 +90,24 @@ export default function Agenda() {
     setBusyId(it.id);
     setError('');
     try {
-      await api.update(it.opportunity_id, { data_prossimo_followup: addDaysISO(todayISO(), days) });
+      const fieldKey = it.kind === 'reorder' ? 'prossimo_riordino' : 'data_prossimo_followup';
+      await api.update(it.opportunity_id, { [fieldKey]: addDaysISO(todayISO(), days) });
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  // Reorder done → advance the next reorder by the cadence and log it.
+  async function markReordered(it) {
+    setBusyId(it.id);
+    setError('');
+    try {
+      const days = it.cadenza || 30;
+      await api.update(it.opportunity_id, { prossimo_riordino: addDaysISO(todayISO(), days) });
+      await api.addActivity(it.opportunity_id, { tipo: 'nota', descrizione: 'Riordino effettuato', data: todayISO() });
       await load();
     } catch (e) {
       setError(e.message);
@@ -105,6 +122,10 @@ export default function Agenda() {
     for (const f of data.followups || []) {
       const days = daysFromToday(f.data_prossimo_followup);
       items.push({ kind: 'followup', id: `f-${f.id}`, opportunity_id: f.id, date: f.data_prossimo_followup, days, azienda: f.azienda, categoria: f.categoria, text: f.prossima_azione || 'Follow-up' });
+    }
+    for (const r of data.reorders || []) {
+      const days = daysFromToday(r.prossimo_riordino);
+      items.push({ kind: 'reorder', id: `r-${r.id}`, opportunity_id: r.id, date: r.prossimo_riordino, days, azienda: r.azienda, categoria: r.categoria, text: r.cadenza_riordino_giorni ? `Riordino · ogni ${r.cadenza_riordino_giorni}gg` : 'Riordino', cadenza: r.cadenza_riordino_giorni });
     }
     for (const a of data.activities || []) {
       const days = daysFromToday(a.data);
@@ -146,6 +167,9 @@ export default function Agenda() {
     const map = {};
     for (const f of data.followups || []) {
       (map[f.data_prossimo_followup] ||= []).push({ kind: 'followup', opportunity_id: f.id, azienda: f.azienda, text: f.prossima_azione || 'Follow-up' });
+    }
+    for (const r of data.reorders || []) {
+      (map[r.prossimo_riordino] ||= []).push({ kind: 'reorder', opportunity_id: r.id, azienda: r.azienda, text: 'Riordino' });
     }
     for (const a of data.activities || []) {
       (map[a.data] ||= []).push({ kind: 'activity', opportunity_id: a.opportunity_id, azienda: a.azienda, text: a.descrizione || '', tipo: a.tipo });
@@ -268,7 +292,9 @@ export default function Agenda() {
                       const cls =
                         it.kind === 'followup'
                           ? 'bg-indigo-100 text-indigo-700'
-                          : (ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).badge;
+                          : it.kind === 'reorder'
+                            ? 'bg-orange-100 text-orange-700'
+                            : (ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).badge;
                       return (
                         <Link
                           key={idx}
@@ -369,6 +395,10 @@ export default function Agenda() {
                           <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase ${(ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).badge}`}>
                             {(ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).label}
                           </span>
+                        ) : it.kind === 'reorder' ? (
+                          <span className="shrink-0 rounded-md bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-orange-700">
+                            Riordino
+                          </span>
                         ) : (
                           <span className="shrink-0 rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-indigo-700">
                             Follow-up
@@ -394,6 +424,15 @@ export default function Agenda() {
                           </button>
                           <button type="button" onClick={() => postpone(it, 1)} disabled={busyId === it.id} title="Rimanda a domani" className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50">
                             Domani
+                          </button>
+                          <button type="button" onClick={() => postpone(it, 7)} disabled={busyId === it.id} title="Rimanda di 7 giorni" className="hidden rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 sm:block">
+                            +7g
+                          </button>
+                        </div>
+                      ) : it.kind === 'reorder' ? (
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button type="button" onClick={() => markReordered(it)} disabled={busyId === it.id} title="Riordino effettuato → avanza la data" className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50">
+                            Riordinato
                           </button>
                           <button type="button" onClick={() => postpone(it, 7)} disabled={busyId === it.id} title="Rimanda di 7 giorni" className="hidden rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 sm:block">
                             +7g

@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
-import { COMMERCIALI, FASI, SENSIBILITY, CATEGORIE, CLOSED_FASI, MOTIVI_VINTO, MOTIVI_PERSO } from '../lib/constants.js';
+import {
+  COMMERCIALI, FASI, SENSIBILITY, CATEGORIE, CLOSED_FASI, MOTIVI_VINTO, MOTIVI_PERSO,
+  CADENZA_OPZIONI, addDaysISO, todayISO,
+} from '../lib/constants.js';
 import ActivityTimeline from './ActivityTimeline.jsx';
+import SampleManager from './SampleManager.jsx';
 
 // Build a wa.me link from a phone number (defaults to Italy country code).
 function waLink(tel) {
@@ -27,6 +31,8 @@ const empty = {
   motivo_chiusura: '',
   prossima_azione: '',
   data_prossimo_followup: '',
+  cadenza_riordino_giorni: '',
+  prossimo_riordino: '',
   note: '',
   data_scadenza: '',
 };
@@ -66,6 +72,8 @@ export default function OpportunityModal({
         motivo_chiusura: opp.motivo_chiusura || '',
         prossima_azione: opp.prossima_azione || '',
         data_prossimo_followup: opp.data_prossimo_followup || '',
+        cadenza_riordino_giorni: opp.cadenza_riordino_giorni ?? '',
+        prossimo_riordino: opp.prossimo_riordino || '',
         note: opp.note || '',
         data_scadenza: opp.data_scadenza || '',
       });
@@ -78,6 +86,15 @@ export default function OpportunityModal({
   if (!open) return null;
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Setting a cadence auto-suggests the next reorder date if not set yet.
+  function setCadenza(v) {
+    setForm((f) => {
+      const next = { ...f, cadenza_riordino_giorni: v };
+      if (v && !f.prossimo_riordino) next.prossimo_riordino = addDaysISO(todayISO(), Number(v));
+      return next;
+    });
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -97,6 +114,8 @@ export default function OpportunityModal({
         data_scadenza: form.data_scadenza || null,
         data_prossimo_followup: form.data_prossimo_followup || null,
         motivo_chiusura: form.motivo_chiusura || null,
+        cadenza_riordino_giorni: form.cadenza_riordino_giorni === '' ? null : Number(form.cadenza_riordino_giorni),
+        prossimo_riordino: form.prossimo_riordino || null,
         note: form.note || null,
       };
       await onSave(payload, opp?.id);
@@ -413,6 +432,37 @@ export default function OpportunityModal({
             </div>
           </div>
 
+          {/* ── Riordino (clienti acquisiti) ── */}
+          {form.fase_pipeline === 'Chiuso' && (
+            <div>
+              <p className={section}>Riordino (cliente acquisito)</p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={label}>Cadenza riordino</label>
+                  <select className={field} value={form.cadenza_riordino_giorni} onChange={(e) => setCadenza(e.target.value)}>
+                    {CADENZA_OPZIONI.map((o) => (
+                      <option key={o.label} value={o.v}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={label}>Prossimo riordino</label>
+                  <input
+                    type="date"
+                    className={field}
+                    value={form.prossimo_riordino}
+                    onChange={(e) => set('prossimo_riordino', e.target.value)}
+                  />
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-slate-400">
+                Comparirà in Agenda con l'azione rapida “Riordinato” (avanza la data della cadenza).
+              </p>
+            </div>
+          )}
+
           {/* ── Note ── */}
           <div>
             <label className={label}>Note</label>
@@ -456,8 +506,9 @@ export default function OpportunityModal({
           </div>
         </form>
 
-        {/* Activity timeline — only for existing leads (sibling of the form, not nested) */}
+        {/* Activity timeline + samples — only for existing leads (siblings of the form) */}
         {isEdit && <ActivityTimeline opportunityId={opp.id} />}
+        {isEdit && <SampleManager opportunityId={opp.id} />}
       </div>
     </div>
   );

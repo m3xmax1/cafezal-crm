@@ -55,4 +55,13 @@ export const api = {
     request(`/opportunities/${id}/activities`, { method: 'POST', body: JSON.stringify(payload) }),
   deleteActivity: (id, actId) =>
     request(`/opportunities/${id}/activities/${actId}`, { method: 'DELETE' }),
+
+  // Campionature (per lead) + overview for stats
+  listSamples: (id) => request(`/opportunities/${id}/samples`),
+  addSample: (id, payload) =>
+    request(`/opportunities/${id}/samples`, { method: 'POST', body: JSON.stringify(payload) }),
+  updateSample: (id, sid, payload) =>
+    request(`/opportunities/${id}/samples/${sid}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  deleteSample: (id, sid) => request(`/opportunities/${id}/samples/${sid}`, { method: 'DELETE' }),
+  samplesOverview: () => request('/samples'),
 };

@@ -50,6 +50,7 @@ function Panel({ title, children }) {
 export default function Statistiche() {
   const { isAdmin, commerciale } = useAuth();
   const [items, setItems] = useState([]);
+  const [samples, setSamples] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -70,6 +71,17 @@ export default function Statistiche() {
       active = false;
     };
   }, [isAdmin, commerciale]);
+
+  useEffect(() => {
+    let active = true;
+    api
+      .samplesOverview()
+      .then((d) => active && setSamples(d || []))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const m = useMemo(() => {
     const total = items.length;
@@ -152,6 +164,26 @@ export default function Statistiche() {
 
   const faseMax = Math.max(1, ...FASI.map((f) => m.byFase[f] || 0));
   const valoreFaseMax = Math.max(1, ...FASI.map((f) => m.valoreByFase[f] || 0));
+
+  const sStat = useMemo(() => {
+    let conv = 0;
+    let attesa = 0;
+    let no = 0;
+    const byProd = {};
+    for (const s of samples) {
+      if (s.esito === 'convertito') conv += 1;
+      else if (s.esito === 'non_convertito') no += 1;
+      else attesa += 1;
+      const k = s.prodotto || '—';
+      if (!byProd[k]) byProd[k] = { tot: 0, conv: 0 };
+      byProd[k].tot += 1;
+      if (s.esito === 'convertito') byProd[k].conv += 1;
+    }
+    const decided = conv + no;
+    const prod = Object.entries(byProd).sort((a, b) => b[1].tot - a[1].tot).slice(0, 6);
+    return { total: samples.length, conv, attesa, no, tasso: decided ? Math.round((conv / decided) * 100) : null, prod };
+  }, [samples]);
+  const sProdMax = Math.max(1, ...sStat.prod.map((p) => p[1].tot));
   const catMax = Math.max(1, ...m.cats.map(([, n]) => n));
   const commMax = Math.max(1, ...m.perComm.map((p) => p.total));
 
@@ -233,6 +265,28 @@ export default function Statistiche() {
               <Kpi label="Da pianificare" value={m.plan} color="text-slate-500" sub="senza prossima azione" />
               <Kpi label="Lead fermi" value={m.fermi} color={m.fermi ? 'text-rose-600' : 'text-slate-500'} sub={`>${STALE_DAYS}gg senza attività`} />
             </div>
+          </Panel>
+
+          {/* Campionature */}
+          <Panel title="Campionature">
+            {sStat.total === 0 ? (
+              <p className="text-sm text-slate-400">Nessun campione registrato. Aggiungili dalla scheda di un lead.</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <Kpi label="Campioni inviati" value={sStat.total} />
+                  <Kpi label="Convertiti" value={sStat.conv} color="text-emerald-600" />
+                  <Kpi label="In attesa" value={sStat.attesa} color="text-amber-600" />
+                  <Kpi label="Tasso conversione" value={sStat.tasso === null ? '—' : `${sStat.tasso}%`} color="text-blue-600" sub="convertiti / (conv.+non conv.)" />
+                </div>
+                <div className="mt-4 space-y-2.5">
+                  {sStat.prod.map(([name, d]) => (
+                    <Bar key={name} label={name} value={d.conv} max={sProdMax} color="bg-emerald-500" display={`${d.conv}/${d.tot}`} />
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-slate-400">Conversioni per prodotto (convertiti / inviati).</p>
+              </>
+            )}
           </Panel>
 
           {/* Per commerciale (solo admin) */}
