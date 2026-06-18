@@ -7,7 +7,7 @@ const navCls = ({ isActive }) =>
   }`;
 
 export default function Layout({ children, right }) {
-  const { email, commerciale, isAdmin, signOut } = useAuth();
+  const { email, commerciale, isAdmin, isTorrefazione, signOut } = useAuth();
   const name = commerciale || email || '';
   const initial = (name[0] || 'U').toUpperCase();
 
@@ -38,6 +38,11 @@ export default function Layout({ children, right }) {
               <NavLink to="/statistiche" className={navCls}>
                 Statistiche
               </NavLink>
+              {(isAdmin || isTorrefazione) && (
+                <NavLink to="/catalogo" className={navCls}>
+                  Catalogo
+                </NavLink>
+              )}
             </nav>
           </div>
 

@@ -52,6 +52,17 @@ export const api = {
   // Sales velocity (avg days per phase + cycle, scoped)
   velocity: () => request('/velocity'),
 
+  // Torrefazione — catalogo prodotti + magazzino
+  prodotti: {
+    list: () => request('/prodotti'),
+    create: (p) => request('/prodotti', { method: 'POST', body: JSON.stringify(p) }),
+    update: (id, p) => request(`/prodotti/${id}`, { method: 'PATCH', body: JSON.stringify(p) }),
+    remove: (id) => request(`/prodotti/${id}`, { method: 'DELETE' }),
+    addFormato: (id, p) => request(`/prodotti/${id}/formati`, { method: 'POST', body: JSON.stringify(p) }),
+    updateFormato: (fid, p) => request(`/prodotti/formati/${fid}`, { method: 'PATCH', body: JSON.stringify(p) }),
+    deleteFormato: (fid) => request(`/prodotti/formati/${fid}`, { method: 'DELETE' }),
+  },
+
   // Activity timeline (per lead)
   listActivities: (id) => request(`/opportunities/${id}/activities`),
   addActivity: (id, payload) =>

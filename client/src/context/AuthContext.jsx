@@ -59,6 +59,8 @@ export function AuthProvider({ children }) {
     // Prefer the server profile once it has loaded.
     commerciale: profile ? profile.commerciale : fallbackCommerciale,
     isAdmin: profile ? profile.isAdmin : fallbackAdmin,
+    isTorrefazione: profile ? !!profile.isTorrefazione : false,
+    store: profile ? profile.store || null : null,
     signIn: (e, p) => supabase.auth.signInWithPassword({ email: e, password: p }),
     signOut: () => supabase.auth.signOut(),
     // Update the logged-in user's password (Supabase Auth).

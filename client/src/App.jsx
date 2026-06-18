@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Agenda from './pages/Agenda.jsx';
 import Mappa from './pages/Mappa.jsx';
 import Statistiche from './pages/Statistiche.jsx';
+import Catalogo from './pages/Catalogo.jsx';
 import Profilo from './pages/Profilo.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 
@@ -40,6 +41,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Statistiche />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/catalogo"
+        element={
+          <ProtectedRoute>
+            <Catalogo />
           </ProtectedRoute>
         }
       />
