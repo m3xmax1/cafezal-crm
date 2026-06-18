@@ -15,7 +15,7 @@ import { useAuth } from './context/AuthContext.jsx';
 function RoleHome() {
   const { store, isTorrefazione, isAdmin } = useAuth();
   if (store) return <Navigate to="/ordina" replace />;
-  if (isTorrefazione && !isAdmin) return <Navigate to="/catalogo" replace />;
+  if (isTorrefazione && !isAdmin) return <Navigate to="/ordini" replace />;
   return <Dashboard />;
 }
 

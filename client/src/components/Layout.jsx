@@ -19,8 +19,8 @@ export default function Layout({ children, right }) {
     ];
   } else if (isTorrefazione && !isAdmin) {
     navLinks = [
+      { to: '/ordini', label: 'Ordini', end: true },
       { to: '/catalogo', label: 'Catalogo' },
-      { to: '/ordini', label: 'Ordini' },
     ];
   } else {
     navLinks = [
