@@ -20,6 +20,7 @@ export default function Layout({ children, right }) {
   } else if (isTorrefazione && !isAdmin) {
     navLinks = [
       { to: '/ordini', label: 'Ordini', end: true },
+      { to: '/produzione', label: 'Produzione' },
       { to: '/catalogo', label: 'Catalogo' },
     ];
   } else {
@@ -29,7 +30,7 @@ export default function Layout({ children, right }) {
       { to: '/mappa', label: 'Mappa' },
       { to: '/statistiche', label: 'Statistiche' },
     ];
-    if (isAdmin || isTorrefazione) navLinks.push({ to: '/catalogo', label: 'Catalogo' }, { to: '/ordini', label: 'Ordini' });
+    if (isAdmin || isTorrefazione) navLinks.push({ to: '/ordini', label: 'Ordini' }, { to: '/produzione', label: 'Produzione' }, { to: '/catalogo', label: 'Catalogo' });
   }
   const roleLabel = isAdmin ? 'Admin' : isTorrefazione ? 'Torrefazione' : store || 'Commerciale';
 

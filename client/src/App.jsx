@@ -7,6 +7,7 @@ import Statistiche from './pages/Statistiche.jsx';
 import Catalogo from './pages/Catalogo.jsx';
 import Ordina from './pages/Ordina.jsx';
 import Ordini from './pages/Ordini.jsx';
+import Produzione from './pages/Produzione.jsx';
 import Profilo from './pages/Profilo.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { useAuth } from './context/AuthContext.jsx';
@@ -44,6 +45,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Ordini />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/produzione"
+        element={
+          <ProtectedRoute>
+            <Produzione />
           </ProtectedRoute>
         }
       />

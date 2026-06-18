@@ -35,3 +35,21 @@ body {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* Print: hide app chrome, show only the production sheet */
+@media print {
+  header,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .print-area {
+    break-inside: avoid;
+  }
+}
