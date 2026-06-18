@@ -2,6 +2,11 @@ import { Router } from 'express';
 import { config } from '../config/env.js';
 import { runDailyReminders } from '../services/reminder.service.js';
 import { runMonthlyReport } from '../services/report.service.js';
+import {
+  runWeeklyJobs,
+  runWeeklyRecap,
+  runStoreReminders,
+} from '../services/torrefazione.service.js';
 
 const router = Router();
 
@@ -42,8 +47,18 @@ function overrideToFrom(req) {
 async function handler(req, res, next) {
   try {
     if (!checkSecret(req, res)) return undefined;
-    const result = await runDailyReminders({ overrideTo: overrideToFrom(req) });
-    return res.json({ ok: true, ...result });
+    const overrideTo = overrideToFrom(req);
+    const result = await runDailyReminders({ overrideTo });
+    // Piggy-back the weekday jobs on the daily cron so we don't consume extra
+    // Vercel cron slots: Monday → roastery recap, Friday → store reminders.
+    // Failures here must never break the daily reminder, so isolate them.
+    let weekly = null;
+    try {
+      weekly = await runWeeklyJobs({ overrideTo });
+    } catch (e) {
+      weekly = { error: e.message };
+    }
+    return res.json({ ok: true, ...result, weekly });
   } catch (e) {
     return next(e);
   }
@@ -64,5 +79,42 @@ router.get('/daily-reminder', handler); // Vercel Cron issues GET requests
 
 router.post('/monthly-report', monthlyReportHandler);
 router.get('/monthly-report', monthlyReportHandler);
+
+// ── Torrefazione weekly jobs ──
+// Dedicated endpoints (always run their job) for manual triggering / testing,
+// plus a weekday-gated dispatcher for an optional external scheduler.
+function torreHandler(fn) {
+  return async (req, res, next) => {
+    try {
+      if (!checkSecret(req, res)) return undefined;
+      const result = await fn({ overrideTo: overrideToFrom(req) });
+      return res.json({ ok: true, ...result });
+    } catch (e) {
+      return next(e);
+    }
+  };
+}
+
+const weeklyRecap = torreHandler(runWeeklyRecap);
+router.post('/weekly-recap', weeklyRecap);
+router.get('/weekly-recap', weeklyRecap);
+
+const storeReminders = torreHandler(runStoreReminders);
+router.post('/store-reminders', storeReminders);
+router.get('/store-reminders', storeReminders);
+
+// Weekday dispatcher (Mon recap / Fri reminders). `?force=1` runs both now.
+async function weeklyDispatch(req, res, next) {
+  try {
+    if (!checkSecret(req, res)) return undefined;
+    const force = ['1', 'true', 'yes'].includes(String(req.query.force || '').toLowerCase());
+    const result = await runWeeklyJobs({ overrideTo: overrideToFrom(req), force });
+    return res.json({ ok: true, ...result });
+  } catch (e) {
+    return next(e);
+  }
+}
+router.post('/weekly', weeklyDispatch);
+router.get('/weekly', weeklyDispatch);
 
 export default router;
