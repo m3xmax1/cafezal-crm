@@ -5,6 +5,7 @@ import {
 } from '../lib/constants.js';
 import ActivityTimeline from './ActivityTimeline.jsx';
 import SampleManager from './SampleManager.jsx';
+import InviaOrdineModal from './InviaOrdineModal.jsx';
 
 // Build a wa.me link from a phone number (defaults to Italy country code).
 function waLink(tel) {
@@ -50,6 +51,7 @@ export default function OpportunityModal({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
+  const [showOrdine, setShowOrdine] = useState(false);
   const isEdit = Boolean(opp?.id);
 
   useEffect(() => {
@@ -463,6 +465,17 @@ export default function OpportunityModal({
             </div>
           )}
 
+          {/* ── Invia ordine alla torrefazione (cliente acquisito) ── */}
+          {form.fase_pipeline === 'Chiuso' && isEdit && (
+            <button
+              type="button"
+              onClick={() => setShowOrdine(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+            >
+              📦 Invia ordine alla torrefazione
+            </button>
+          )}
+
           {/* ── Note ── */}
           <div>
             <label className={label}>Note</label>
@@ -510,6 +523,8 @@ export default function OpportunityModal({
         {isEdit && <ActivityTimeline opportunityId={opp.id} />}
         {isEdit && <SampleManager opportunityId={opp.id} />}
       </div>
+
+      {showOrdine && <InviaOrdineModal opp={opp} onClose={() => setShowOrdine(false)} />}
     </div>
   );
 }
