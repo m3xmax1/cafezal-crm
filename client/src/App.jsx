@@ -5,8 +5,19 @@ import Agenda from './pages/Agenda.jsx';
 import Mappa from './pages/Mappa.jsx';
 import Statistiche from './pages/Statistiche.jsx';
 import Catalogo from './pages/Catalogo.jsx';
+import Ordina from './pages/Ordina.jsx';
+import Ordini from './pages/Ordini.jsx';
 import Profilo from './pages/Profilo.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import { useAuth } from './context/AuthContext.jsx';
+
+// Land each role in its own world.
+function RoleHome() {
+  const { store, isTorrefazione, isAdmin } = useAuth();
+  if (store) return <Navigate to="/ordina" replace />;
+  if (isTorrefazione && !isAdmin) return <Navigate to="/catalogo" replace />;
+  return <Dashboard />;
+}
 
 export default function App() {
   return (
@@ -16,7 +27,23 @@ export default function App() {
         path="/"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <RoleHome />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ordina"
+        element={
+          <ProtectedRoute>
+            <Ordina />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ordini"
+        element={
+          <ProtectedRoute>
+            <Ordini />
           </ProtectedRoute>
         }
       />

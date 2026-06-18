@@ -63,6 +63,13 @@ export const api = {
     deleteFormato: (fid) => request(`/prodotti/formati/${fid}`, { method: 'DELETE' }),
   },
 
+  // Ordini torrefazione (retail dagli store + b2b)
+  ordini: {
+    list: (stato) => request(`/ordini${stato ? `?stato=${encodeURIComponent(stato)}` : ''}`),
+    create: (payload) => request('/ordini', { method: 'POST', body: JSON.stringify(payload) }),
+    update: (id, payload) => request(`/ordini/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  },
+
   // Activity timeline (per lead)
   listActivities: (id) => request(`/opportunities/${id}/activities`),
   addActivity: (id, payload) =>

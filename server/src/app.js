@@ -8,6 +8,7 @@ import agendaRoutes from './routes/agenda.routes.js';
 import samplesRoutes from './routes/samples.routes.js';
 import velocityRoutes from './routes/velocity.routes.js';
 import prodottiRoutes from './routes/prodotti.routes.js';
+import ordiniRoutes from './routes/ordini.routes.js';
 
 export function createApp() {
   const app = express();
@@ -30,6 +31,7 @@ export function createApp() {
   app.use('/api/samples', samplesRoutes);
   app.use('/api/velocity', velocityRoutes);
   app.use('/api/prodotti', prodottiRoutes);
+  app.use('/api/ordini', ordiniRoutes);
   app.use('/api/cron', cronRoutes);
 
   // 404

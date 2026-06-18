@@ -7,9 +7,30 @@ const navCls = ({ isActive }) =>
   }`;
 
 export default function Layout({ children, right }) {
-  const { email, commerciale, isAdmin, isTorrefazione, signOut } = useAuth();
-  const name = commerciale || email || '';
+  const { email, commerciale, isAdmin, isTorrefazione, store, signOut } = useAuth();
+  const name = store || commerciale || email || '';
   const initial = (name[0] || 'U').toUpperCase();
+
+  let navLinks;
+  if (store) {
+    navLinks = [
+      { to: '/ordina', label: 'Ordina', end: true },
+      { to: '/ordini', label: 'I miei ordini' },
+    ];
+  } else if (isTorrefazione && !isAdmin) {
+    navLinks = [
+      { to: '/catalogo', label: 'Catalogo' },
+      { to: '/ordini', label: 'Ordini' },
+    ];
+  } else {
+    navLinks = [
+      { to: '/', label: 'Pipeline', end: true },
+      { to: '/agenda', label: 'Agenda' },
+      { to: '/mappa', label: 'Mappa' },
+      { to: '/statistiche', label: 'Statistiche' },
+    ];
+    if (isAdmin || isTorrefazione) navLinks.push({ to: '/catalogo', label: 'Catalogo' }, { to: '/ordini', label: 'Ordini' });
+  }
 
   return (
     <div className="flex min-h-full flex-col">
@@ -26,23 +47,11 @@ export default function Layout({ children, right }) {
               </div>
             </Link>
             <nav className="flex items-center gap-0.5">
-              <NavLink to="/" end className={navCls}>
-                Pipeline
-              </NavLink>
-              <NavLink to="/agenda" className={navCls}>
-                Agenda
-              </NavLink>
-              <NavLink to="/mappa" className={navCls}>
-                Mappa
-              </NavLink>
-              <NavLink to="/statistiche" className={navCls}>
-                Statistiche
-              </NavLink>
-              {(isAdmin || isTorrefazione) && (
-                <NavLink to="/catalogo" className={navCls}>
-                  Catalogo
+              {navLinks.map((l) => (
+                <NavLink key={l.to} to={l.to} end={l.end} className={navCls}>
+                  {l.label}
                 </NavLink>
-              )}
+              ))}
             </nav>
           </div>
 
