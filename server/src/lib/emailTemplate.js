@@ -73,6 +73,7 @@ export function buildReminderEmail({
   upcoming = [],
   daPianificare = 0,
   recap = {},
+  problemiTorre = [],
 }) {
   const chip = (label, n, bg, fg) =>
     `<span style="display:inline-block;background:${bg};color:${fg};border-radius:9999px;padding:3px 10px;font-size:13px;font-weight:600;margin-right:6px;">${n} ${label}</span>`;
@@ -83,7 +84,24 @@ export function buildReminderEmail({
       ${dueToday.length ? chip('oggi', dueToday.length, '#fef3c7', '#b45309') : ''}
       ${upcoming.length ? chip(`entro ${daysAhead}g`, upcoming.length, '#dbeafe', '#1d4ed8') : ''}
       ${daPianificare ? chip('da pianificare', daPianificare, '#f1f5f9', '#475569') : ''}
+      ${problemiTorre.length ? chip('problemi ordine', problemiTorre.length, '#fee2e2', '#b91c1c') : ''}
     </div>`;
+
+  const problemiBlock = problemiTorre.length
+    ? sectionTitle('📦', 'Problemi su ordini in torrefazione', '#b91c1c') +
+      `<table style="width:100%;border-collapse:collapse;font-size:14px;"><tbody>${problemiTorre
+        .map(
+          (o) => `
+        <tr>
+          <td style="padding:9px 10px;border-bottom:1px solid #fee2e2;">
+            <div style="font-weight:600;color:#0f172a;">${escapeHtml(o.cliente_nome || '—')} <span style="color:#94a3b8;font-weight:400;">#${o.id}</span></div>
+            ${o.note ? `<div style="color:#b91c1c;font-size:13px;">${escapeHtml(o.note)}</div>` : ''}
+          </td>
+          <td style="padding:9px 10px;border-bottom:1px solid #fee2e2;text-align:right;white-space:nowrap;color:#94a3b8;font-size:12px;">${o.data_consegna ? fmtDate(o.data_consegna) : ''}</td>
+        </tr>`,
+        )
+        .join('')}</tbody></table>`
+    : '';
 
   const overdueBlock = overdue.length
     ? sectionTitle('🔴', 'Follow-up in ritardo', '#b91c1c') + followupTable(overdue, today, '#b91c1c')
@@ -109,7 +127,7 @@ export function buildReminderEmail({
   ).join('');
 
   const allClear =
-    !overdue.length && !dueToday.length && !upcoming.length && !daPianificare
+    !overdue.length && !dueToday.length && !upcoming.length && !daPianificare && !problemiTorre.length
       ? `<p style="color:#16a34a;font-size:14px;">Tutto in ordine: nessun follow-up in scadenza 🎉</p>`
       : '';
 
@@ -122,6 +140,7 @@ export function buildReminderEmail({
     <div style="border:1px solid #e2e8f0;border-top:none;padding:20px 24px;border-radius:0 0 12px 12px;background:#ffffff;">
       ${summary}
       ${allClear}
+      ${problemiBlock}
       ${overdueBlock}
       ${todayBlock}
       ${upcomingBlock}

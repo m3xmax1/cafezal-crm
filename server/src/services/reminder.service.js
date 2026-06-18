@@ -83,7 +83,18 @@ export async function runDailyReminders(options = {}) {
     const recap = Object.fromEntries(FASI.map((ph) => [ph, 0]));
     for (const l of leads) recap[l.fase_pipeline] = (recap[l.fase_pipeline] || 0) + 1;
 
-    const actionable = overdue.length + dueToday.length + upcoming.length + daPianificare;
+    // Roastery orders this commercial sent that the torrefazione flagged as a problem.
+    const { data: problemiTorre } = await db
+      .from('ordini')
+      .select('id, cliente_nome, note, data_consegna')
+      .eq('origine', 'b2b')
+      .eq('created_by', commerciale)
+      .eq('stato', 'problema')
+      .order('data_consegna', { ascending: true, nullsFirst: false });
+    const problemi = problemiTorre || [];
+
+    const actionable =
+      overdue.length + dueToday.length + upcoming.length + daPianificare + problemi.length;
     if (actionable === 0) {
       results.push({ commerciale, to, sent: false, reason: 'niente da fare' });
       continue;
@@ -98,6 +109,7 @@ export async function runDailyReminders(options = {}) {
       upcoming,
       daPianificare,
       recap,
+      problemiTorre: problemi,
     });
 
     const subject = overrideTo
@@ -114,6 +126,7 @@ export async function runDailyReminders(options = {}) {
         today: dueToday.length,
         upcoming: upcoming.length,
         daPianificare,
+        problemi: problemi.length,
       });
     } catch (err) {
       results.push({ commerciale, to, sent: false, error: err.message });
