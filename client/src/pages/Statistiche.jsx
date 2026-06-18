@@ -51,6 +51,7 @@ export default function Statistiche() {
   const { isAdmin, commerciale } = useAuth();
   const [items, setItems] = useState([]);
   const [samples, setSamples] = useState([]);
+  const [velocity, setVelocity] = useState({ perFase: {}, cicloMedio: null, campione: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -77,6 +78,17 @@ export default function Statistiche() {
     api
       .samplesOverview()
       .then((d) => active && setSamples(d || []))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    api
+      .velocity()
+      .then((d) => active && setVelocity(d || { perFase: {}, cicloMedio: null, campione: 0 }))
       .catch(() => {});
     return () => {
       active = false;
@@ -184,6 +196,14 @@ export default function Statistiche() {
     return { total: samples.length, conv, attesa, no, tasso: decided ? Math.round((conv / decided) * 100) : null, prod };
   }, [samples]);
   const sProdMax = Math.max(1, ...sStat.prod.map((p) => p[1].tot));
+
+  // Funnel: leads that reached each phase or later (linear path, K.O. excluded).
+  const FUNNEL_FASI = ['Lead', 'Contattato', 'In trattativa', 'Proposta', 'Chiuso'];
+  const reached = FUNNEL_FASI.map((_, i) => items.filter((o) => FUNNEL_FASI.indexOf(o.fase_pipeline) >= i).length);
+  const VEL_FASI = ['Lead', 'Contattato', 'In trattativa', 'Proposta'];
+  const velVals = VEL_FASI.map((f) => velocity.perFase?.[f]).filter((v) => v != null);
+  const velMax = Math.max(1, ...velVals);
+  const velBottleneck = velVals.length > 1 ? Math.max(...velVals) : null;
   const catMax = Math.max(1, ...m.cats.map(([, n]) => n));
   const commMax = Math.max(1, ...m.perComm.map((p) => p.total));
 
@@ -255,6 +275,69 @@ export default function Statistiche() {
               </div>
             </Panel>
           </div>
+
+          {/* Funnel & velocity */}
+          <Panel title="Funnel & velocity">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">Imbuto di conversione</p>
+            <div className="space-y-2">
+              {FUNNEL_FASI.map((fase, i) => {
+                const count = reached[i];
+                const conv = i === 0 ? null : reached[i - 1] ? Math.round((reached[i] / reached[i - 1]) * 100) : 0;
+                const pct = reached[0] ? Math.round((count / reached[0]) * 100) : 0;
+                const last = i === FUNNEL_FASI.length - 1;
+                return (
+                  <div key={fase} className="flex items-center gap-3">
+                    <span className="w-24 shrink-0 text-sm text-slate-600 sm:w-28">{fase}</span>
+                    <div className="h-6 flex-1">
+                      <div
+                        className={`flex h-full items-center rounded-md px-2 ${last ? 'bg-emerald-100' : 'bg-blue-100'}`}
+                        style={{ width: `${count > 0 ? Math.max(pct, 7) : 0}%` }}
+                      >
+                        <span className={`text-xs font-semibold ${last ? 'text-emerald-700' : 'text-blue-700'}`}>
+                          {count.toLocaleString('it-IT')}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="w-12 shrink-0 text-right text-xs text-slate-500">{conv === null ? '—' : `${conv}%`}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="mb-2 mt-5 text-xs font-medium uppercase tracking-wide text-slate-400">Tempo medio per fase</p>
+            <div className="space-y-2">
+              {VEL_FASI.map((f) => {
+                const d = velocity.perFase?.[f];
+                const bott = d != null && d === velBottleneck;
+                return (
+                  <div key={f} className="flex items-center gap-3">
+                    <span className="w-28 shrink-0 text-xs text-slate-600 sm:w-32">Tempo in {f}</span>
+                    <div className="h-5 flex-1">
+                      {d != null && (
+                        <div
+                          className={`h-full rounded-md ${bott ? 'bg-amber-200' : 'bg-slate-200'}`}
+                          style={{ width: `${Math.max(Math.round((d / velMax) * 100), 4)}%` }}
+                        />
+                      )}
+                    </div>
+                    <span className={`w-16 shrink-0 text-right text-xs ${bott ? 'font-semibold text-amber-700' : 'text-slate-500'}`}>
+                      {d == null ? '—' : `${d} gg`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between rounded-md bg-slate-50 px-4 py-3">
+              <span className="text-sm text-slate-500">Ciclo medio Lead → Chiuso</span>
+              <span className="text-lg font-bold text-slate-900">{velocity.cicloMedio == null ? '—' : `${velocity.cicloMedio} giorni`}</span>
+            </div>
+            {velocity.campione === 0 && (
+              <p className="mt-2 text-xs text-slate-400">
+                I tempi si popolano man mano che i lead cambiano fase (la registrazione è partita di recente).
+              </p>
+            )}
+          </Panel>
 
           {/* Salute follow-up */}
           <Panel title="Salute follow-up">

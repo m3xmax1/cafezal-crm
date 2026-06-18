@@ -49,6 +49,9 @@ export const api = {
   // Agenda (follow-ups + activities, scoped)
   agenda: () => request('/agenda'),
 
+  // Sales velocity (avg days per phase + cycle, scoped)
+  velocity: () => request('/velocity'),
+
   // Activity timeline (per lead)
   listActivities: (id) => request(`/opportunities/${id}/activities`),
   addActivity: (id, payload) =>

@@ -79,6 +79,14 @@ export async function agenda(req, res, next) {
   }
 }
 
+export async function velocity(req, res, next) {
+  try {
+    res.json(await service.getVelocity(req.user));
+  } catch (e) {
+    next(e);
+  }
+}
+
 export async function listActivities(req, res, next) {
   try {
     const data = await activities.listActivities(req.user, req.params.id);

@@ -144,6 +144,67 @@ export async function getAgenda(user, { from, to } = {}) {
   return { followups, activities, reorders };
 }
 
+/**
+ * Sales velocity: average days spent in each phase + average Lead→Chiuso cycle,
+ * computed from phase_changes (scoped). Sparse until enough transitions accrue.
+ */
+export async function getVelocity(user) {
+  if (!user.isAdmin && !user.commerciale) return { perFase: {}, cnt: {}, cicloMedio: null, campione: 0 };
+
+  let changes = [];
+  try {
+    const { data, error } = await db
+      .from('phase_changes')
+      .select('opportunity_id, da_fase, a_fase, changed_at, opportunities(commerciale_assegnato, data_creazione)')
+      .order('changed_at', { ascending: true });
+    if (error) throw error;
+    changes = data || [];
+  } catch {
+    return { perFase: {}, cnt: {}, cicloMedio: null, campione: 0 };
+  }
+
+  const scoped = changes.filter((c) => {
+    if (user.isAdmin) return true;
+    const o = c.opportunities || {};
+    return o.commerciale_assegnato === user.commerciale || o.commerciale_assegnato == null;
+  });
+
+  const byOpp = {};
+  for (const c of scoped) {
+    if (!byOpp[c.opportunity_id]) byOpp[c.opportunity_id] = { changes: [], creato: c.opportunities?.data_creazione };
+    byOpp[c.opportunity_id].changes.push(c);
+  }
+
+  const sum = {};
+  const cnt = {};
+  const cicli = [];
+  for (const oppId of Object.keys(byOpp)) {
+    const { changes: list, creato } = byOpp[oppId];
+    list.sort((a, b) => new Date(a.changed_at) - new Date(b.changed_at));
+    const entered = {};
+    if (creato && list.length) entered[list[0].da_fase] = creato; // entered the initial phase at creation
+    let chiusoT = null;
+    for (const c of list) {
+      const t = new Date(c.changed_at);
+      if (entered[c.da_fase]) {
+        const d = (t - new Date(entered[c.da_fase])) / 86400000;
+        if (d >= 0) {
+          sum[c.da_fase] = (sum[c.da_fase] || 0) + d;
+          cnt[c.da_fase] = (cnt[c.da_fase] || 0) + 1;
+        }
+      }
+      entered[c.a_fase] = c.changed_at;
+      if (c.a_fase === 'Chiuso') chiusoT = t;
+    }
+    if (creato && chiusoT) cicli.push((chiusoT - new Date(creato)) / 86400000);
+  }
+
+  const perFase = {};
+  for (const f of Object.keys(sum)) perFase[f] = Math.round(sum[f] / cnt[f]);
+  const cicloMedio = cicli.length ? Math.round(cicli.reduce((a, b) => a + b, 0) / cicli.length) : null;
+  return { perFase, cnt, cicloMedio, campione: cicli.length };
+}
+
 export async function getOpportunity(user, id) {
   const { data, error } = await db.from(TABLE).select('*').eq('id', id).maybeSingle();
   if (error) throw error;

@@ -6,6 +6,7 @@ import meRoutes from './routes/me.routes.js';
 import cronRoutes from './routes/cron.routes.js';
 import agendaRoutes from './routes/agenda.routes.js';
 import samplesRoutes from './routes/samples.routes.js';
+import velocityRoutes from './routes/velocity.routes.js';
 
 export function createApp() {
   const app = express();
@@ -26,6 +27,7 @@ export function createApp() {
   app.use('/api/opportunities', opportunitiesRoutes);
   app.use('/api/agenda', agendaRoutes);
   app.use('/api/samples', samplesRoutes);
+  app.use('/api/velocity', velocityRoutes);
   app.use('/api/cron', cronRoutes);
 
   // 404
