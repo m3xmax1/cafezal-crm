@@ -37,6 +37,16 @@ export const EMAIL_TO_COMMERCIALE = {
   'gabriele@cafezal.com': 'Gabriele',
 };
 
+// Torrefazione / store roles (mirror del server) — fallback istantaneo dall'email.
+export const TORREFAZIONE_EMAILS = ['torrefazione@cafezal.it'];
+export const STORE_EMAIL_TO_NEGOZIO = {
+  'coffeehub@cafezal.it': 'Premuda',
+  'solferino@cafezal.it': 'Solferino',
+  'magenta@cafezal.it': 'Magenta',
+  'sangregorio@cafezal.it': 'San Gregorio',
+  'bicocca@cafezal.it': 'Bicocca',
+};
+
 // Kanban column styling per phase
 export const FASE_COLORS = {
   Lead: 'bg-slate-50 border-slate-200',

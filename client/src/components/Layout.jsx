@@ -31,6 +31,7 @@ export default function Layout({ children, right }) {
     ];
     if (isAdmin || isTorrefazione) navLinks.push({ to: '/catalogo', label: 'Catalogo' }, { to: '/ordini', label: 'Ordini' });
   }
+  const roleLabel = isAdmin ? 'Admin' : isTorrefazione ? 'Torrefazione' : store || 'Commerciale';
 
   return (
     <div className="flex min-h-full flex-col">
@@ -69,7 +70,7 @@ export default function Layout({ children, right }) {
               <div className="text-right leading-tight">
                 <div className="text-xs font-semibold text-slate-700">{name}</div>
                 <div className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
-                  {isAdmin ? 'Admin' : 'Commerciale'}
+                  {roleLabel}
                 </div>
               </div>
             </Link>
