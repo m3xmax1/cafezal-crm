@@ -46,7 +46,7 @@ export const TORREFAZIONE_EMAILS = ['torrefazione@cafezal.it'];
 // Store login email → store name (Navigli / Gae Aulenti: TBD, no login yet)
 export const STORE_EMAIL_TO_NEGOZIO = {
   'coffeehub@cafezal.it': 'Premuda',
-  'solferio@cafezal.it': 'Solferino',
+  'solferino@cafezal.it': 'Solferino',
   'magenta@cafezal.it': 'Magenta',
   'sangregorio@cafezal.it': 'San Gregorio',
   'bicocca@cafezal.it': 'Bicocca',
