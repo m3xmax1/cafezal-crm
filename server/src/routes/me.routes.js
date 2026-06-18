@@ -9,6 +9,8 @@ router.get('/', requireAuth, (req, res) => {
     email: req.user.email,
     commerciale: req.user.commerciale,
     isAdmin: req.user.isAdmin,
+    isTorrefazione: req.user.isTorrefazione,
+    store: req.user.store,
   });
 });
 
