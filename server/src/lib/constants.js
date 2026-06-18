@@ -40,6 +40,18 @@ export const COMMERCIALE_TO_EMAIL = {
 // Phases that are already finalized — excluded from "due soon" reminders.
 export const CLOSED_FASI = ['Chiuso', 'K.O.'];
 
+// ─── Torrefazione / Retail roles ───
+export const TORREFAZIONE_EMAILS = ['torrefazione@cafezal.it'];
+
+// Store login email → store name (Navigli / Gae Aulenti: TBD, no login yet)
+export const STORE_EMAIL_TO_NEGOZIO = {
+  'coffeehub@cafezal.it': 'Premuda',
+  'solferio@cafezal.it': 'Solferino',
+  'magenta@cafezal.it': 'Magenta',
+  'sangregorio@cafezal.it': 'San Gregorio',
+  'bicocca@cafezal.it': 'Bicocca',
+};
+
 // Activity timeline entry types (manual log: calls, emails, meetings, notes).
 export const ACTIVITY_TIPI = ['chiamata', 'email', 'meeting', 'nota', 'altro'];
 
