@@ -7,6 +7,7 @@ import {
   runWeeklyRecap,
   runStoreReminders,
 } from '../services/torrefazione.service.js';
+import { runMonthlyClientReminders } from '../services/clienti.service.js';
 
 const router = Router();
 
@@ -67,8 +68,16 @@ async function handler(req, res, next) {
 async function monthlyReportHandler(req, res, next) {
   try {
     if (!checkSecret(req, res)) return undefined;
-    const result = await runMonthlyReport({ overrideTo: overrideToFrom(req) });
-    return res.json(result);
+    const overrideTo = overrideToFrom(req);
+    const result = await runMonthlyReport({ overrideTo });
+    // Piggy-back: reminder mensile clienti sotto minimo (isolato).
+    let clienti = null;
+    try {
+      clienti = await runMonthlyClientReminders({ overrideTo });
+    } catch (e) {
+      clienti = { error: e.message };
+    }
+    return res.json({ ...result, clientiMensile: clienti });
   } catch (e) {
     return next(e);
   }
@@ -102,6 +111,10 @@ router.get('/weekly-recap', weeklyRecap);
 const storeReminders = torreHandler(runStoreReminders);
 router.post('/store-reminders', storeReminders);
 router.get('/store-reminders', storeReminders);
+
+const clientiMensile = torreHandler(runMonthlyClientReminders);
+router.post('/clienti-mensile', clientiMensile);
+router.get('/clienti-mensile', clientiMensile);
 
 // Weekday dispatcher (Mon recap / Fri reminders). `?force=1` runs both now.
 async function weeklyDispatch(req, res, next) {

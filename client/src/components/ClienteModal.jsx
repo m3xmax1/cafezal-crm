@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { ACCOUNT_MANAGERS } from '../lib/constants.js';
 import { api } from '../lib/api.js';
@@ -28,6 +28,7 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted, ren
     for (const k of BOOL) f[k] = cliente?.[k] ?? false;
     f.account_manager = cliente?.account_manager || '';
     f.tags = (cliente?.tags || []).join(', ');
+    f.opportunity_id = cliente?.opportunity_id || '';
     if (renew) {
       // Suggest a fresh period for the renewed contract.
       f.firma = todayISO();
@@ -42,6 +43,19 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted, ren
   const set = (k, v) => setForm((s) => ({ ...s, [k]: v }));
   const st = cliente?.stats;
 
+  // Collegamento al lead CRM (cerca per nome).
+  const [opps, setOpps] = useState([]);
+  const [oppQuery, setOppQuery] = useState('');
+  useEffect(() => {
+    api.list({}).then((d) => setOpps((d || []).map((o) => ({ id: o.id, azienda: o.azienda })))).catch(() => {});
+  }, []);
+  const linkedLead = opps.find((o) => o.id === form.opportunity_id);
+  const oppMatches = useMemo(() => {
+    const q = oppQuery.trim().toLowerCase();
+    if (!q) return [];
+    return opps.filter((o) => (o.azienda || '').toLowerCase().includes(q)).slice(0, 8);
+  }, [opps, oppQuery]);
+
   async function save() {
     if (!form.cliente.trim() && !form.rag_sociale.trim()) {
       setError('Indica almeno il nome cliente o la ragione sociale.');
@@ -50,7 +64,7 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted, ren
     setError('');
     setSaving(true);
     try {
-      const payload = { account_manager: form.account_manager || null, tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [] };
+      const payload = { account_manager: form.account_manager || null, opportunity_id: form.opportunity_id || null, tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [] };
       for (const k of TEXT) payload[k] = form[k] === '' ? null : form[k];
       for (const k of NUM) payload[k] = form[k] === '' ? null : Number(form[k]);
       for (const k of DATE) payload[k] = form[k] || null;
@@ -139,6 +153,26 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted, ren
               </select>
             </div>
             <div className="sm:col-span-2"><label className={label}>Tag (separati da virgola)</label><input className={field} value={form.tags} onChange={(e) => set('tags', e.target.value)} placeholder="es. premium, milano, hotel" /></div>
+            <div className="sm:col-span-2">
+              <label className={label}>Lead CRM collegato <span className="text-slate-400">(per statistiche ordini accurate)</span></label>
+              {linkedLead || form.opportunity_id ? (
+                <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm">
+                  <span className="truncate text-emerald-800">🔗 {linkedLead ? linkedLead.azienda : 'Lead collegato'}</span>
+                  <button type="button" onClick={() => { set('opportunity_id', ''); setOppQuery(''); }} className="shrink-0 text-xs font-medium text-rose-600 hover:underline">Scollega</button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <input className={field} value={oppQuery} onChange={(e) => setOppQuery(e.target.value)} placeholder="Cerca un lead per nome…" />
+                  {oppMatches.length > 0 && (
+                    <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                      {oppMatches.map((o) => (
+                        <button type="button" key={o.id} onClick={() => { set('opportunity_id', o.id); setOppQuery(''); }} className="block w-full truncate px-3 py-1.5 text-left text-sm hover:bg-slate-50">{o.azienda}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <p className={section}>Contratto</p>

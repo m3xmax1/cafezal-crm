@@ -1,4 +1,7 @@
 import { db } from '../config/supabase.js';
+import { COMMERCIALI, COMMERCIALE_TO_EMAIL } from '../lib/constants.js';
+import { buildClientiMensileEmail } from '../lib/clientiEmailTemplate.js';
+import { sendMail } from '../lib/mailer.js';
 
 function httpError(message, status) {
   const e = new Error(message);
@@ -102,4 +105,63 @@ export async function deleteCliente(user, id) {
   const { error } = await db.from('clienti_attivi').delete().eq('id', id);
   if (error) throw error;
   return { ok: true };
+}
+
+/** kg ordinati negli ultimi 90 giorni per un cliente (match per opportunity o nome). */
+function kg90For(c, ordini, now) {
+  const D90 = 90 * 86400000;
+  const keyCli = norm(c.cliente);
+  const keyRag = norm(c.rag_sociale);
+  let kg90 = 0;
+  for (const o of ordini) {
+    let mine = false;
+    if (c.opportunity_id && o.opportunity_id && o.opportunity_id === c.opportunity_id) mine = true;
+    else {
+      const on = norm(o.cliente_nome);
+      if (on && ((keyRag && keyRag.length >= 4 && (on === keyRag || on.includes(keyRag))) || (keyCli && keyCli.length >= 4 && (on === keyCli || on.includes(keyCli))))) mine = true;
+    }
+    if (!mine) continue;
+    const t = o.data_ordine ? new Date(o.data_ordine).getTime() : null;
+    if (t && now - t <= D90) kg90 += Number(o.peso_totale_kg) || 0;
+  }
+  return kg90;
+}
+
+/**
+ * Reminder mensile: per ogni account manager (commerciale), i clienti attivi
+ * sotto l'80% del minimo contrattuale negli ultimi 90 giorni. I clienti gestiti
+ * dalla "Torrefazione" non generano email.
+ */
+export async function runMonthlyClientReminders(options = {}) {
+  const overrideTo = options.overrideTo || null;
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: clienti } = await db.from('clienti_attivi').select('*').eq('attivo', true);
+  const { data: ordini } = await db.from('ordini').select('cliente_nome, opportunity_id, peso_totale_kg, data_ordine').limit(5000);
+  const now = Date.now();
+
+  const results = [];
+  for (const comm of COMMERCIALI) {
+    const to = overrideTo || COMMERCIALE_TO_EMAIL[comm];
+    if (!to) continue;
+    const mine = (clienti || []).filter((c) => c.account_manager === comm && Number(c.ordine_minimo_kg) > 0);
+    const sotto = [];
+    for (const c of mine) {
+      const kg90 = kg90For(c, ordini || [], now);
+      if (kg90 / 3 < Number(c.ordine_minimo_kg) * 0.8) sotto.push({ ...c, kg90 });
+    }
+    if (!sotto.length) {
+      results.push({ commerciale: comm, sent: false, reason: 'tutti in linea' });
+      continue;
+    }
+    const html = buildClientiMensileEmail({ commerciale: comm, today, sotto });
+    const subject = overrideTo ? `[TEST] Clienti sotto minimo (${comm}) - Cafezal` : 'Clienti sotto il minimo - Cafezal CRM';
+    try {
+      await sendMail({ to, subject, html });
+      results.push({ commerciale: comm, to, sent: true, sotto: sotto.length });
+    } catch (err) {
+      results.push({ commerciale: comm, to, sent: false, error: err.message });
+    }
+    if (overrideTo) break; // in test invia un solo campione
+  }
+  return { job: 'clienti-mensile', today, test: Boolean(overrideTo), results };
 }
