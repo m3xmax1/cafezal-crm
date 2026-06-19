@@ -10,11 +10,16 @@ import KanbanBoard from '../components/KanbanBoard.jsx';
 import OpportunityModal from '../components/OpportunityModal.jsx';
 import ImportModal from '../components/ImportModal.jsx';
 
+// "Da pianificare" = open lead, taken in charge, with no next action scheduled.
+const isDaPianificare = (o) =>
+  !CLOSED_FASI.includes(o.fase_pipeline) && !o.data_prossimo_followup && !!o.commerciale_assegnato;
+
 export default function Dashboard() {
   const { commerciale, isAdmin } = useAuth();
   const [items, setItems] = useState([]);
   const [filters, setFilters] = useState({});
   const [search, setSearch] = useState('');
+  const [planOnly, setPlanOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -42,16 +47,19 @@ export default function Dashboard() {
   // Client-side search over the loaded set (instant, no extra request).
   // Matches company, contact, city, phone, email and the planned next action.
   const shown = useMemo(() => {
+    let list = planOnly ? items.filter(isDaPianificare) : items;
     const q = search.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((o) =>
+    if (!q) return list;
+    return list.filter((o) =>
       [o.azienda, o.referente, o.citta, o.telefono, o.email, o.prossima_azione]
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
         .includes(q),
     );
-  }, [items, search]);
+  }, [items, search, planOnly]);
+
+  const planCount = useMemo(() => items.filter(isDaPianificare).length, [items]);
 
   const stats = useMemo(() => {
     const pool = shown.filter((o) => !o.commerciale_assegnato).length;
@@ -193,6 +201,26 @@ export default function Dashboard() {
         <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
           <Filters value={filters} onChange={setFilters} showCommerciale={isAdmin} />
           <button
+            onClick={() => setPlanOnly((v) => !v)}
+            aria-pressed={planOnly}
+            title="Mostra solo i lead presi in carico senza una prossima azione"
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+              planOnly
+                ? 'border-blue-600 bg-blue-600 text-white'
+                : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            <span className={`h-2 w-2 rounded-full ${planOnly ? 'bg-white' : 'bg-slate-300'}`} />
+            Da pianificare
+            <span
+              className={`rounded-full px-1.5 text-xs font-semibold ${
+                planOnly ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+              }`}
+            >
+              {planCount}
+            </span>
+          </button>
+          <button
             onClick={() => exportLeadsCsv(shown)}
             title="Esporta i lead visibili in CSV"
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
@@ -250,6 +278,19 @@ export default function Dashboard() {
 
       {error && (
         <div className="mb-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+      )}
+
+      {planOnly && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700">
+          <span>
+            {shown.length > 0
+              ? `${shown.length} lead da pianificare — apri ciascuno e fissa la prossima azione.`
+              : 'Nessun lead da pianificare: tutto sotto controllo 🎉'}
+          </span>
+          <button onClick={() => setPlanOnly(false)} className="shrink-0 font-medium text-blue-700 hover:underline">
+            Mostra tutti
+          </button>
+        </div>
       )}
 
       {loading ? (
