@@ -11,4 +11,9 @@ router.post('/', ctrl.create);
 router.patch('/:id', ctrl.update);
 router.delete('/:id', ctrl.remove);
 
+// Azioni fatte (timeline)
+router.get('/:id/attivita', ctrl.listAttivita);
+router.post('/:id/attivita', ctrl.addAttivita);
+router.delete('/attivita/:aid', ctrl.removeAttivita);
+
 export default router;

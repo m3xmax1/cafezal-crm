@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { COMMERCIALI, EVENTO_STATUS, EVENTO_STATUS_META, PERMESSI_STATUS, PERMESSI_META } from '../lib/constants.js';
+import { COMMERCIALI, EVENTO_TIPI, EVENTO_STATUS, EVENTO_STATUS_META, PERMESSI_STATUS, PERMESSI_META } from '../lib/constants.js';
 import { api } from '../lib/api.js';
+import EventoTimeline from './EventoTimeline.jsx';
 
 const d10 = (s) => (s ? String(s).slice(0, 10) : '');
 
-const TEXT = ['richiesta', 'tipologia_fiera', 'contatti', 'citta', 'note', 'orari_evento', 'pause_quando', 'catering_note', 'baristi', 'referente_nome', 'referente_numero', 'referente_mail', 'note_organizzazione'];
-const DATE = ['prossima_fiera_data', 'data_evento', 'data_allestimento', 'data_smontaggio'];
+const TEXT = ['richiesta', 'tipologia_fiera', 'contatti', 'citta', 'note', 'prossima_azione', 'orari_evento', 'pause_quando', 'catering_note', 'baristi', 'referente_nome', 'referente_numero', 'referente_mail', 'note_organizzazione'];
+const DATE = ['prossima_fiera_data', 'data_prossimo_followup', 'data_evento', 'data_allestimento', 'data_smontaggio'];
 const NUM = ['persone_previste'];
 const BOOL = ['pause', 'acqua_fornita', 'energia_comunicata', 'spazio_comunicato', 'scia_comunicata', 'latte', 'avena', 'catering', 'attivo'];
 
@@ -93,7 +94,14 @@ export default function EventoModal({ evento, onClose, onSaved, onDeleted }) {
           <p className={section}>Richiesta</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2"><label className={label}>Richiesta</label><input className={field} value={form.richiesta} onChange={(e) => set('richiesta', e.target.value)} placeholder="Es. stand caffè a fiera X" /></div>
-            <div><label className={label}>Tipologia di fiera</label><input className={field} value={form.tipologia_fiera} onChange={(e) => set('tipologia_fiera', e.target.value)} placeholder="Food, design, wedding…" /></div>
+            <div>
+              <label className={label}>Tipologia di evento</label>
+              <select className={field} value={form.tipologia_fiera} onChange={(e) => set('tipologia_fiera', e.target.value)}>
+                <option value="">—</option>
+                {EVENTO_TIPI.map((t) => (<option key={t} value={t}>{t}</option>))}
+                {form.tipologia_fiera && !EVENTO_TIPI.includes(form.tipologia_fiera) && <option value={form.tipologia_fiera}>{form.tipologia_fiera}</option>}
+              </select>
+            </div>
             <div><label className={label}>Città / luogo</label><input className={field} value={form.citta} onChange={(e) => set('citta', e.target.value)} /></div>
             <div className="sm:col-span-2"><label className={label}>Contatti</label><input className={field} value={form.contatti} onChange={(e) => set('contatti', e.target.value)} placeholder="Nome, telefono, email…" /></div>
             <div>
@@ -109,7 +117,9 @@ export default function EventoModal({ evento, onClose, onSaved, onDeleted }) {
                 {COMMERCIALI.map((c) => (<option key={c} value={c}>{c}</option>))}
               </select>
             </div>
-            <div className="sm:col-span-2"><label className={label}>Prossima fiera uguale (per follow-up)</label><input type="date" className={field} value={form.prossima_fiera_data} onChange={(e) => set('prossima_fiera_data', e.target.value)} /></div>
+            <div><label className={label}>Prossima azione</label><input className={field} value={form.prossima_azione} onChange={(e) => set('prossima_azione', e.target.value)} placeholder="Es. inviare preventivo, richiamare…" /></div>
+            <div><label className={label}>Data prossimo follow-up <span className="text-slate-400">(va in agenda)</span></label><input type="date" className={field} value={form.data_prossimo_followup} onChange={(e) => set('data_prossimo_followup', e.target.value)} /></div>
+            <div className="sm:col-span-2"><label className={label}>Prossima edizione / evento uguale <span className="text-slate-400">(per riproporre)</span></label><input type="date" className={field} value={form.prossima_fiera_data} onChange={(e) => set('prossima_fiera_data', e.target.value)} /></div>
             <div className="sm:col-span-2"><label className={label}>Note</label><textarea rows="2" className={field} value={form.note} onChange={(e) => set('note', e.target.value)} /></div>
           </div>
 
@@ -164,6 +174,8 @@ export default function EventoModal({ evento, onClose, onSaved, onDeleted }) {
               <div className="mt-3"><label className={label}>Note organizzazione</label><textarea rows="2" className={field} value={form.note_organizzazione} onChange={(e) => set('note_organizzazione', e.target.value)} /></div>
             </>
           )}
+
+          {isEdit && <EventoTimeline eventoId={evento.id} />}
         </div>
 
         <div className="flex items-center justify-between gap-2 border-t border-slate-200 px-5 py-3">

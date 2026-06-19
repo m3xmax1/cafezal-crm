@@ -31,3 +31,27 @@ export async function remove(req, res, next) {
     next(e);
   }
 }
+
+export async function listAttivita(req, res, next) {
+  try {
+    res.json(await service.listAttivita(req.user, req.params.id));
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function addAttivita(req, res, next) {
+  try {
+    res.status(201).json(await service.addAttivita(req.user, req.params.id, req.body || {}));
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function removeAttivita(req, res, next) {
+  try {
+    res.json(await service.deleteAttivita(req.user, req.params.aid));
+  } catch (e) {
+    next(e);
+  }
+}

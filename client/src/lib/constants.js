@@ -127,14 +127,15 @@ export function daysSince(tsStr) {
 // Activity timeline types
 export const ACTIVITY_TIPI = ['chiamata', 'whatsapp', 'instagram', 'email', 'meeting', 'nota', 'altro'];
 
-// ─── Eventi / fiere ───
+// ─── Eventi ───
+export const EVENTO_TIPI = ['Fiera', 'Take over', 'Catering estero'];
 export const EVENTO_STATUS = ['contattato', 'trattativa', 'firmato', 'organizzazione', 'eseguita'];
 export const EVENTO_STATUS_META = {
   contattato: { label: 'Contattato', dot: 'bg-blue-500', badge: 'bg-blue-100 text-blue-800' },
   trattativa: { label: 'Trattativa', dot: 'bg-amber-500', badge: 'bg-amber-100 text-amber-800' },
   firmato: { label: 'Firmato', dot: 'bg-violet-500', badge: 'bg-violet-100 text-violet-800' },
   organizzazione: { label: 'Organizzazione', dot: 'bg-cyan-500', badge: 'bg-cyan-100 text-cyan-800' },
-  eseguita: { label: 'Fiera eseguita', dot: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-800' },
+  eseguita: { label: 'Evento eseguito', dot: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-800' },
 };
 export const PERMESSI_STATUS = ['da_chiedere', 'richiesti', 'inviati'];
 export const PERMESSI_META = {

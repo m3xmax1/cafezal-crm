@@ -23,6 +23,7 @@ function EventoCard({ e, onClick, onAdvance }) {
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           {e.data_evento && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">📅 {fmtDate(e.data_evento)}</span>}
+          {e.data_prossimo_followup && <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700" title={e.prossima_azione || ''}>⏰ {fmtDate(e.data_prossimo_followup)}</span>}
           {e.permessi_status && <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${PERMESSI_META[e.permessi_status]?.badge}`}>Permessi: {PERMESSI_META[e.permessi_status]?.label}</span>}
           {e.prossima_fiera_data && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">🔁 {fmtDate(e.prossima_fiera_data)}</span>}
         </div>

@@ -82,10 +82,11 @@ export default function Agenda() {
         const d = String(date).slice(0, 10);
         out.push({ kind: 'evento', id: `e-${e.id}-${what}`, eventId: e.id, date: d, days: daysFromToday(d), azienda: label, text: what });
       };
+      add(e.data_prossimo_followup, e.prossima_azione || 'Follow-up');
       add(e.data_evento, 'Evento');
       add(e.data_allestimento, 'Allestimento');
       add(e.data_smontaggio, 'Smontaggio');
-      add(e.prossima_fiera_data, 'Prossima fiera');
+      add(e.prossima_fiera_data, 'Prossima edizione');
     }
     return out;
   }, [eventi]);

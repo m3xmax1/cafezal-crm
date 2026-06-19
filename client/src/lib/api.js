@@ -83,12 +83,15 @@ export const api = {
     torrefazione: () => request('/stats/torrefazione'),
   },
 
-  // Eventi / fiere
+  // Eventi
   eventi: {
     list: () => request('/eventi'),
     create: (p) => request('/eventi', { method: 'POST', body: JSON.stringify(p) }),
     update: (id, p) => request(`/eventi/${id}`, { method: 'PATCH', body: JSON.stringify(p) }),
     remove: (id) => request(`/eventi/${id}`, { method: 'DELETE' }),
+    listAttivita: (id) => request(`/eventi/${id}/attivita`),
+    addAttivita: (id, p) => request(`/eventi/${id}/attivita`, { method: 'POST', body: JSON.stringify(p) }),
+    removeAttivita: (aid) => request(`/eventi/attivita/${aid}`, { method: 'DELETE' }),
   },
 
   // Activity timeline (per lead)
