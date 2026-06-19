@@ -46,6 +46,7 @@ const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 
 export default function Agenda() {
   const [data, setData] = useState({ followups: [], activities: [] });
+  const [eventi, setEventi] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
@@ -60,13 +61,34 @@ export default function Agenda() {
     setLoading(true);
     setError('');
     try {
-      setData((await api.agenda()) || { followups: [], activities: [] });
+      const [ag, ev] = await Promise.all([api.agenda(), api.eventi.list().catch(() => [])]);
+      setData(ag || { followups: [], activities: [] });
+      setEventi(ev || []);
     } catch (e) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  // Date-chiave degli eventi (evento, allestimento, smontaggio, prossima fiera).
+  const eventItems = useMemo(() => {
+    const out = [];
+    for (const e of eventi) {
+      if (e.attivo === false) continue;
+      const label = e.richiesta || e.tipologia_fiera || 'Evento';
+      const add = (date, what) => {
+        if (!date) return;
+        const d = String(date).slice(0, 10);
+        out.push({ kind: 'evento', id: `e-${e.id}-${what}`, eventId: e.id, date: d, days: daysFromToday(d), azienda: label, text: what });
+      };
+      add(e.data_evento, 'Evento');
+      add(e.data_allestimento, 'Allestimento');
+      add(e.data_smontaggio, 'Smontaggio');
+      add(e.prossima_fiera_data, 'Prossima fiera');
+    }
+    return out;
+  }, [eventi]);
 
   useEffect(() => {
     load();
@@ -132,11 +154,12 @@ export default function Agenda() {
       if (days < 0) continue;
       items.push({ kind: 'activity', id: `a-${a.id}`, opportunity_id: a.opportunity_id, date: a.data, days, azienda: a.azienda, categoria: a.categoria, text: a.descrizione || '', tipo: a.tipo });
     }
+    for (const it of eventItems) if (it.days >= 0) items.push(it);
     items.sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0));
     const byBucket = Object.fromEntries(BUCKETS.map((b) => [b.key, []]));
     for (const it of items) byBucket[bucketOf(it.days)].push(it);
     return byBucket;
-  }, [data]);
+  }, [data, eventItems]);
 
   const total = Object.values(grouped).reduce((n, arr) => n + arr.length, 0);
 
@@ -174,8 +197,11 @@ export default function Agenda() {
     for (const a of data.activities || []) {
       (map[a.data] ||= []).push({ kind: 'activity', opportunity_id: a.opportunity_id, azienda: a.azienda, text: a.descrizione || '', tipo: a.tipo });
     }
+    for (const it of eventItems) {
+      (map[it.date] ||= []).push({ kind: 'evento', eventId: it.eventId, azienda: it.azienda, text: it.text });
+    }
     return map;
-  }, [data]);
+  }, [data, eventItems]);
 
   const cells = useMemo(() => {
     const { y, m } = month;
@@ -294,15 +320,17 @@ export default function Agenda() {
                           ? 'bg-indigo-100 text-indigo-700'
                           : it.kind === 'reorder'
                             ? 'bg-orange-100 text-orange-700'
-                            : (ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).badge;
+                            : it.kind === 'evento'
+                              ? 'bg-cyan-100 text-cyan-700'
+                              : (ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).badge;
                       return (
                         <Link
                           key={idx}
-                          to={`/?lead=${it.opportunity_id}`}
+                          to={it.kind === 'evento' ? '/eventi' : `/?lead=${it.opportunity_id}`}
                           title={`${it.azienda}${it.text ? ' · ' + it.text : ''}`}
                           className={`block truncate rounded px-1 py-0.5 text-[10px] font-medium ${cls}`}
                         >
-                          {it.azienda}
+                          {it.kind === 'evento' ? `🎪 ${it.azienda}` : it.azienda}
                         </Link>
                       );
                     })}
@@ -389,7 +417,7 @@ export default function Agenda() {
                       key={it.id}
                       className="flex items-center gap-3 border-b border-slate-100 px-3 py-3 transition-colors last:border-0 hover:bg-slate-50 sm:px-4"
                     >
-                      <Link to={`/?lead=${it.opportunity_id}`} className="flex min-w-0 flex-1 items-center gap-2.5">
+                      <Link to={it.kind === 'evento' ? '/eventi' : `/?lead=${it.opportunity_id}`} className="flex min-w-0 flex-1 items-center gap-2.5">
                         <div className="w-12 shrink-0 text-xs font-semibold text-slate-500">{fmtDate(it.date)}</div>
                         {it.kind === 'activity' ? (
                           <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase ${(ACTIVITY_TIPO_META[it.tipo] || ACTIVITY_TIPO_META.altro).badge}`}>
@@ -398,6 +426,10 @@ export default function Agenda() {
                         ) : it.kind === 'reorder' ? (
                           <span className="shrink-0 rounded-md bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-orange-700">
                             Riordino
+                          </span>
+                        ) : it.kind === 'evento' ? (
+                          <span className="shrink-0 rounded-md bg-cyan-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-cyan-700">
+                            🎪 {it.text || 'Evento'}
                           </span>
                         ) : (
                           <span className="shrink-0 rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-indigo-700">

@@ -10,6 +10,8 @@ import {
   followupStatus,
   fmtEuro,
   daysSince,
+  EVENTO_STATUS,
+  EVENTO_STATUS_META,
 } from '../lib/constants.js';
 import Layout from '../components/Layout.jsx';
 
@@ -52,6 +54,7 @@ export default function Statistiche() {
   const [items, setItems] = useState([]);
   const [samples, setSamples] = useState([]);
   const [velocity, setVelocity] = useState({ perFase: {}, cicloMedio: null, campione: 0 });
+  const [eventi, setEventi] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -94,6 +97,32 @@ export default function Statistiche() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    api.eventi.list().then((d) => active && setEventi(d || [])).catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const ev = useMemo(() => {
+    const attivi = eventi.filter((e) => e.attivo !== false);
+    const byStatus = Object.fromEntries(EVENTO_STATUS.map((s) => [s, 0]));
+    for (const e of attivi) if (e.status in byStatus) byStatus[e.status] += 1;
+    const byTip = {};
+    for (const e of attivi) { const t = e.tipologia_fiera || '—'; byTip[t] = (byTip[t] || 0) + 1; }
+    const oggi = new Date().setHours(0, 0, 0, 0);
+    const prossimi = attivi.filter((e) => e.data_evento && new Date(e.data_evento).setHours(0, 0, 0, 0) >= oggi).length;
+    return {
+      totale: attivi.length,
+      byStatus,
+      byTip: Object.entries(byTip).sort((a, b) => b[1] - a[1]).slice(0, 6),
+      prossimi,
+      eseguite: byStatus.eseguita || 0,
+      storico: eventi.length - attivi.length,
+    };
+  }, [eventi]);
 
   const m = useMemo(() => {
     const total = items.length;
@@ -408,6 +437,37 @@ export default function Statistiche() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </Panel>
+          )}
+
+          {/* Eventi & fiere */}
+          {ev.totale + ev.storico > 0 && (
+            <Panel title="Eventi & fiere">
+              <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                <Kpi label="Attivi" value={ev.totale} />
+                <Kpi label="In organizzazione" value={ev.byStatus.organizzazione} color="text-cyan-600" />
+                <Kpi label="Prossimi" value={ev.prossimi} color="text-emerald-600" />
+                <Kpi label="Eseguite" value={ev.eseguite} color="text-emerald-600" />
+                <Kpi label="Storico" value={ev.storico} color="text-slate-500" />
+              </div>
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <div>
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Per status</h4>
+                  <div className="space-y-1.5">
+                    {EVENTO_STATUS.map((s) => (
+                      <Bar key={s} label={EVENTO_STATUS_META[s].label} value={ev.byStatus[s]} max={Math.max(1, ...EVENTO_STATUS.map((x) => ev.byStatus[x]))} color="bg-cyan-500" />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Per tipologia</h4>
+                  <div className="space-y-1.5">
+                    {ev.byTip.length ? ev.byTip.map(([t, n]) => (
+                      <Bar key={t} label={t} value={n} max={Math.max(1, ...ev.byTip.map((x) => x[1]))} color="bg-violet-500" />
+                    )) : <p className="text-sm text-slate-400">Nessun evento.</p>}
+                  </div>
+                </div>
               </div>
             </Panel>
           )}
