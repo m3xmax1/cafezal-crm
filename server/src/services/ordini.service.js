@@ -70,7 +70,9 @@ export async function createOrdine(user, payload) {
     const q = Number(r.quantita) || 0;
     if (q <= 0) continue;
     const peso = fmt ? Number(fmt.peso_kg) || 0 : 0;
-    const prezzo = fmt ? fmt.prezzo : null;
+    // Selling price: per-line override (commercial) wins over the catalog price.
+    const hasOverride = r.prezzo !== undefined && r.prezzo !== null && r.prezzo !== '';
+    const prezzo = hasOverride ? Number(r.prezzo) : fmt ? fmt.prezzo : null;
     const kgTot = q * peso;
     needKg[p.id] = (needKg[p.id] || 0) + kgTot;
     const tot = prezzo != null ? q * prezzo : null;

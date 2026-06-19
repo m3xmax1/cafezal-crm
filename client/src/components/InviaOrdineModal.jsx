@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../lib/api.js';
 
 const eur = (v) =>
@@ -14,8 +15,16 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [qty, setQty] = useState({}); // formato_id -> quantità
+  const [price, setPrice] = useState({}); // formato_id -> prezzo di vendita (override commerciale)
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(null);
+
+  // Selling price for a format: commercial override, else catalog (torrefazione) price.
+  const priceFor = (f) => {
+    const o = price[f.id];
+    if (o !== undefined && o !== '') return Number(o);
+    return f.prezzo != null ? Number(f.prezzo) : null;
+  };
 
   const [ship, setShip] = useState({
     cliente_nome: opp?.azienda || '',
@@ -65,10 +74,11 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
       const hit = fmtIndex[fid];
       if (!hit) continue;
       const peso = Number(hit.f.peso_kg) || 0;
+      const prezzo = priceFor(hit.f);
       need[hit.p.id] = (need[hit.p.id] || 0) + n * peso;
-      if (hit.f.prezzo != null) totale += n * Number(hit.f.prezzo);
+      if (prezzo != null) totale += n * prezzo;
       pesoTot += n * peso;
-      righe.push({ prodotto_id: hit.p.id, formato_id: Number(fid), quantita: n });
+      righe.push({ prodotto_id: hit.p.id, formato_id: Number(fid), quantita: n, prezzo });
     }
     const shortByProd = {};
     for (const p of cat) {
@@ -76,7 +86,7 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
       if (needKg > (Number(p.giacenza_kg) || 0)) shortByProd[p.id] = Number(p.giacenza_kg) || 0;
     }
     return { righe, totale, pesoTot, righeCount: righe.length, shortByProd };
-  }, [qty, fmtIndex, cat]);
+  }, [qty, price, fmtIndex, cat]);
 
   async function submit() {
     if (!righe.length) {
@@ -110,9 +120,9 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
   const fieldCls =
     'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100';
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-slate-900/50 p-3 sm:p-6"
+      className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-slate-900/70 p-3 sm:p-6"
       onClick={(e) => {
         e.stopPropagation();
         onClose();
@@ -158,6 +168,11 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
             {/* Product picker */}
             <div className="overflow-y-auto border-b border-slate-100 p-4 lg:col-span-3 lg:border-b-0 lg:border-r">
               {error && <div className="mb-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+              {!loading && (
+                <p className="mb-3 rounded-md bg-blue-50 px-2.5 py-1.5 text-[11px] text-blue-700">
+                  💶 Prezzi di default dalla torrefazione — modificabili per questo ordine.
+                </p>
+              )}
               {loading ? (
                 <div className="grid place-items-center py-16 text-slate-400">Caricamento catalogo…</div>
               ) : (
@@ -175,9 +190,26 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
                           </div>
                           <div className="mt-1.5 flex flex-wrap gap-1.5">
                             {(p.prodotti_formati || []).filter((f) => f.attivo !== false).map((f) => (
-                              <label key={f.id} className="flex items-center gap-1.5 rounded-md bg-slate-50 px-2 py-1 text-xs">
-                                <span className="text-slate-600">{f.formato}</span>
-                                {f.prezzo != null && <span className="text-slate-400">{eur(f.prezzo)}</span>}
+                              <div key={f.id} className="flex items-center gap-1 rounded-md bg-slate-50 px-2 py-1 text-xs">
+                                <span className="w-10 font-medium text-slate-600">{f.formato}</span>
+                                {f.prezzo != null && (
+                                  <span className="flex items-center gap-0.5 text-slate-400" title="Prezzo di vendita — modificabile dal commerciale">
+                                    €
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      value={price[f.id] !== undefined ? price[f.id] : f.prezzo ?? ''}
+                                      onChange={(e) => setPrice((m) => ({ ...m, [f.id]: e.target.value }))}
+                                      className={`w-14 rounded border bg-white px-1 py-0.5 text-right focus:border-blue-500 focus:outline-none ${
+                                        price[f.id] !== undefined && Number(price[f.id]) !== Number(f.prezzo)
+                                          ? 'border-blue-300 font-semibold text-blue-700'
+                                          : 'border-slate-200 text-slate-600'
+                                      }`}
+                                    />
+                                  </span>
+                                )}
+                                <span className="ml-auto text-slate-400">×</span>
                                 <input
                                   type="number"
                                   min="0"
@@ -185,9 +217,9 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
                                   value={qty[f.id] || ''}
                                   onChange={(e) => setQty((m) => ({ ...m, [f.id]: e.target.value }))}
                                   placeholder="0"
-                                  className="w-14 rounded border border-slate-300 px-1.5 py-0.5 text-right text-xs focus:border-blue-500 focus:outline-none"
+                                  className="w-12 rounded border border-slate-300 px-1.5 py-0.5 text-right focus:border-blue-500 focus:outline-none"
                                 />
-                              </label>
+                              </div>
                             ))}
                           </div>
                           {shortByProd[p.id] !== undefined && (
@@ -236,6 +268,7 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

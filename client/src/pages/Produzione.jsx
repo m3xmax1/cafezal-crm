@@ -63,6 +63,26 @@ export default function Produzione() {
     return Object.entries(g).sort((a, b) => a[0].localeCompare(b[0]));
   }, [scope]);
 
+  // Per-destination aggregation → one printable page each (big-font packing sheet).
+  const perDest = useMemo(
+    () =>
+      destinazioni.map(([nome, ords]) => {
+        const m = {};
+        for (const o of ords)
+          for (const r of o.ordini_righe || []) {
+            const k = r.nome_caffe || '—';
+            if (!m[k]) m[k] = { pezzi: 0, kg: 0 };
+            m[k].pezzi += Number(r.quantita) || 0;
+            m[k].kg += (Number(r.quantita) || 0) * (Number(r.peso_kg) || 0);
+          }
+        const righe = Object.entries(m).sort((a, b) => b[1].kg - a[1].kg);
+        const consegne = [...new Set(ords.map((o) => o.data_consegna).filter(Boolean))];
+        const kgD = righe.reduce((s, [, v]) => s + v.kg, 0);
+        return { nome, ords, righe, consegne, kgD };
+      }),
+    [destinazioni],
+  );
+
   function esportaCsv() {
     const rows = [['Caffè / formato', 'Pezzi', 'Kg']];
     for (const [nome, v] of produzione) rows.push([nome, v.pezzi, v.kg.toFixed(2)]);
@@ -96,12 +116,8 @@ export default function Produzione() {
       {loading ? (
         <div className="grid place-items-center py-20 text-slate-400">Caricamento…</div>
       ) : (
-        <div className="print-area">
-          <div className="mb-3 hidden items-baseline justify-between print:flex">
-            <h1 className="text-lg font-bold">Produzione torrefazione — Cafezal</h1>
-            <span className="text-sm">{fmtDate(new Date())}</span>
-          </div>
-
+        <>
+        <div className="print:hidden">
           <div className="mb-4 grid grid-cols-3 gap-3">
             <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
               <div className="text-xs uppercase tracking-wide text-slate-400">Ordini attivi</div>
@@ -167,6 +183,76 @@ export default function Produzione() {
             </div>
           )}
         </div>
+
+        {/* ── Stampa: una pagina per destinazione, font grande ── */}
+        {scope.length > 0 && (
+          <div className="hidden print:block">
+            <section className="print-page">
+              <div className="mb-5 flex items-baseline justify-between border-b-2 border-black pb-2">
+                <h1 className="text-3xl font-extrabold">Produzione torrefazione — Cafezal</h1>
+                <span className="text-base">{fmtDate(new Date())}</span>
+              </div>
+              <p className="mb-4 text-xl">Da produrre (aggregato) — {scope.length} ordini · {kg(kgTot)}</p>
+              <table className="w-full text-2xl">
+                <thead>
+                  <tr className="border-b-2 border-black text-left">
+                    <th className="py-2">Caffè / formato</th>
+                    <th className="py-2 text-right">Pezzi</th>
+                    <th className="py-2 text-right">Kg</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {produzione.map(([nome, v]) => (
+                    <tr key={nome} className="border-b border-slate-300">
+                      <td className="py-2 font-medium">{nome}</td>
+                      <td className="py-2 text-right">{v.pezzi}</td>
+                      <td className="py-2 text-right font-bold">{kg(v.kg)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+
+            {perDest.map((d) => (
+              <section key={d.nome} className="print-page">
+                <div className="mb-5 flex items-baseline justify-between border-b-2 border-black pb-2">
+                  <h1 className="text-4xl font-extrabold">{d.nome}</h1>
+                  <span className="text-lg">{d.ords.length} ord. · {kg(d.kgD)}</span>
+                </div>
+                <p className="mb-5 text-xl">
+                  Consegna: <strong>{d.consegne.length ? d.consegne.map(fmtDate).join(', ') : '—'}</strong>
+                </p>
+                <table className="w-full text-3xl">
+                  <thead>
+                    <tr className="border-b-2 border-black text-left">
+                      <th className="py-3">Caffè</th>
+                      <th className="py-3 text-right">Pezzi</th>
+                      <th className="py-3 text-right">Kg</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {d.righe.map(([nome, v]) => (
+                      <tr key={nome} className="border-b border-slate-300">
+                        <td className="py-3 font-semibold">{nome}</td>
+                        <td className="py-3 text-right">{v.pezzi}</td>
+                        <td className="py-3 text-right font-bold">{kg(v.kg)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {d.ords.some((o) => o.note) && (
+                  <div className="mt-5 text-lg">
+                    <p className="font-bold">Note:</p>
+                    {d.ords.filter((o) => o.note).map((o) => (
+                      <p key={o.id}>#{o.id} — {o.note}</p>
+                    ))}
+                  </div>
+                )}
+              </section>
+            ))}
+          </div>
+        )}
+        </>
       )}
     </Layout>
   );

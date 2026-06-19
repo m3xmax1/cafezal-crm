@@ -44,12 +44,19 @@ body {
   }
   body {
     background: #fff !important;
+    color: #000 !important;
   }
   main {
     padding: 0 !important;
     max-width: none !important;
   }
-  .print-area {
+  /* One page per destination, large readable type. */
+  .print-page {
+    break-after: page;
     break-inside: avoid;
+    padding-top: 4px;
+  }
+  .print-page:last-child {
+    break-after: auto;
   }
 }
