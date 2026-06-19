@@ -1,9 +1,16 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { COMMERCIALI } from '../lib/constants.js';
+import { ACCOUNT_MANAGERS } from '../lib/constants.js';
 import { api } from '../lib/api.js';
 
 const d10 = (s) => (s ? String(s).slice(0, 10) : '');
+const todayISO = () => new Date().toISOString().slice(0, 10);
+function addMonthsISO(iso, months) {
+  if (!iso || !months) return '';
+  const d = new Date(iso);
+  d.setMonth(d.getMonth() + Number(months));
+  return d.toISOString().slice(0, 10);
+}
 const kg = (v) => (v == null ? '—' : `${Number(v).toLocaleString('it-IT', { maximumFractionDigits: 1 })} kg`);
 const eur = (v) => (v == null ? '—' : `€ ${Number(v).toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
 
@@ -12,7 +19,7 @@ const NUM = ['valore_attrezzatura', 'deposito', 'rata_noleggio', 'durata_mesi', 
 const DATE = ['firma', 'scadenza_contratto'];
 const BOOL = ['comodato', 'fornitura', 'prezzo_bloccato', 'assistenza_inclusa', 'esclusiva', 'attivo'];
 
-export default function ClienteModal({ cliente, onClose, onSaved, onDeleted }) {
+export default function ClienteModal({ cliente, onClose, onSaved, onDeleted, renew = false }) {
   const isEdit = Boolean(cliente?.id);
   const [form, setForm] = useState(() => {
     const f = {};
@@ -21,6 +28,12 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted }) {
     for (const k of BOOL) f[k] = cliente?.[k] ?? false;
     f.account_manager = cliente?.account_manager || '';
     f.tags = (cliente?.tags || []).join(', ');
+    if (renew) {
+      // Suggest a fresh period for the renewed contract.
+      f.firma = todayISO();
+      f.scadenza_contratto = addMonthsISO(todayISO(), cliente?.durata_mesi) || '';
+      f.attivo = true;
+    }
     return f;
   });
   const [saving, setSaving] = useState(false);
@@ -42,6 +55,10 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted }) {
       for (const k of NUM) payload[k] = form[k] === '' ? null : Number(form[k]);
       for (const k of DATE) payload[k] = form[k] || null;
       for (const k of BOOL) payload[k] = !!form[k];
+      if (renew) {
+        payload.esito_contratto = 'rinnovato';
+        payload.attivo = true;
+      }
       const res = isEdit ? await api.clienti.update(cliente.id, payload) : await api.clienti.create(payload);
       onSaved(res);
     } catch (e) {
@@ -88,6 +105,18 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted }) {
         <div className="max-h-[78vh] overflow-y-auto px-5 py-4">
           {error && <div className="mb-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
+          {renew && (
+            <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              🔄 <strong>Rinnovo contratto</strong> — ho proposto nuova firma e scadenza in base alla durata. Aggiorna date e termini, poi salva.
+            </div>
+          )}
+
+          {!renew && cliente?.esito_contratto === 'non_rinnovato' && (
+            <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              🗄️ <strong>In storico</strong> — contratto non rinnovato.{cliente?.feedback_chiusura ? ` Motivo: ${cliente.feedback_chiusura}` : ''}
+            </div>
+          )}
+
           {st && (
             <div className="mb-4 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-4">
               <div><div className="text-[11px] uppercase text-slate-400">Ordini B2B</div><div className="font-bold text-slate-800">{st.nOrdini}</div></div>
@@ -106,7 +135,7 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted }) {
               <label className={label}>Account manager</label>
               <select className={field} value={form.account_manager} onChange={(e) => set('account_manager', e.target.value)}>
                 <option value="">— non assegnato —</option>
-                {COMMERCIALI.map((c) => (<option key={c} value={c}>{c}</option>))}
+                {ACCOUNT_MANAGERS.map((c) => (<option key={c} value={c}>{c}</option>))}
               </select>
             </div>
             <div className="sm:col-span-2"><label className={label}>Tag (separati da virgola)</label><input className={field} value={form.tags} onChange={(e) => set('tags', e.target.value)} placeholder="es. premium, milano, hotel" /></div>

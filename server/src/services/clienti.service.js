@@ -72,6 +72,7 @@ const EDITABLE = [
   'scadenza_contratto', 'rinnovo', 'spese_trasporto', 'fornitura', 'prezzo_bloccato',
   'prezzo_caffe', 'ordine_minimo_kg', 'penale_ordine', 'assistenza_inclusa', 'numero_interventi',
   'costo_uscita', 'esclusiva', 'penale_esclusiva', 'pagamento', 'tags', 'note', 'attivo',
+  'esito_contratto', 'feedback_chiusura',
 ];
 
 export async function updateCliente(user, id, payload) {

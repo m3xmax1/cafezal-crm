@@ -2,6 +2,13 @@
 
 export const COMMERCIALI = ['Laura', 'Massimo', 'Gabriele'];
 
+// Account manager dei clienti attivi: commerciali + Torrefazione (clienti gestiti
+// direttamente dalla torrefazione, solo come etichetta organizzativa).
+export const ACCOUNT_MANAGERS = [...COMMERCIALI, 'Torrefazione'];
+
+// Motivi del mancato rinnovo (feedback check alla scadenza contratto).
+export const MOTIVI_MANCATO_RINNOVO = ['Prezzo', 'Servizio/qualità', 'Chiusura attività', 'Concorrenza', 'Cambio fornitore', 'Altro'];
+
 export const FASI = ['Lead', 'Contattato', 'In trattativa', 'Proposta', 'Chiuso', 'K.O.'];
 
 export const SENSIBILITY = ['low', 'mid', 'high'];
