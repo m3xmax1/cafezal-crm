@@ -100,6 +100,7 @@ export async function runDailyReminders(options = {}) {
         .from('clienti_attivi')
         .select('id, cliente, rag_sociale, scadenza_contratto, ordine_minimo_kg')
         .eq('account_manager', commerciale)
+        .eq('attivo', true)
         .gte('scadenza_contratto', today)
         .lte('scadenza_contratto', addDaysISO(today, 90))
         .order('scadenza_contratto', { ascending: true });
