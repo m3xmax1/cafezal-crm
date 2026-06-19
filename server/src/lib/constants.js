@@ -53,7 +53,7 @@ export const STORE_EMAIL_TO_NEGOZIO = {
 };
 
 // Activity timeline entry types (manual log: calls, emails, meetings, notes).
-export const ACTIVITY_TIPI = ['chiamata', 'email', 'meeting', 'nota', 'altro'];
+export const ACTIVITY_TIPI = ['chiamata', 'whatsapp', 'instagram', 'email', 'meeting', 'nota', 'altro'];
 
 // Coffee sample outcomes.
 export const SAMPLE_ESITI = ['in_attesa', 'convertito', 'non_convertito'];

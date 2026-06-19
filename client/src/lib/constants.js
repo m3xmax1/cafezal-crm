@@ -125,7 +125,7 @@ export function daysSince(tsStr) {
 }
 
 // Activity timeline types
-export const ACTIVITY_TIPI = ['chiamata', 'email', 'meeting', 'nota', 'altro'];
+export const ACTIVITY_TIPI = ['chiamata', 'whatsapp', 'instagram', 'email', 'meeting', 'nota', 'altro'];
 
 // Coffee sample outcomes
 export const SAMPLE_ESITI = ['in_attesa', 'convertito', 'non_convertito'];
@@ -145,6 +145,8 @@ export const CADENZA_OPZIONI = [
 ];
 export const ACTIVITY_TIPO_META = {
   chiamata: { label: 'Chiamata', badge: 'bg-blue-100 text-blue-800', icon: '📞' },
+  whatsapp: { label: 'WhatsApp', badge: 'bg-green-100 text-green-800', icon: '💬' },
+  instagram: { label: 'Instagram', badge: 'bg-pink-100 text-pink-800', icon: '📷' },
   email: { label: 'Email', badge: 'bg-violet-100 text-violet-800', icon: '✉️' },
   meeting: { label: 'Meeting', badge: 'bg-emerald-100 text-emerald-800', icon: '🤝' },
   nota: { label: 'Nota', badge: 'bg-slate-100 text-slate-700', icon: '📝' },
