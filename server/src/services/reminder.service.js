@@ -93,8 +93,23 @@ export async function runDailyReminders(options = {}) {
       .order('data_consegna', { ascending: true, nullsFirst: false });
     const problemi = problemiTorre || [];
 
+    // Active-client contracts expiring within ~3 months, for this account manager.
+    let scadenze = [];
+    try {
+      const { data: sc } = await db
+        .from('clienti_attivi')
+        .select('id, cliente, rag_sociale, scadenza_contratto, ordine_minimo_kg')
+        .eq('account_manager', commerciale)
+        .gte('scadenza_contratto', today)
+        .lte('scadenza_contratto', addDaysISO(today, 90))
+        .order('scadenza_contratto', { ascending: true });
+      scadenze = sc || [];
+    } catch {
+      scadenze = [];
+    }
+
     const actionable =
-      overdue.length + dueToday.length + upcoming.length + daPianificare + problemi.length;
+      overdue.length + dueToday.length + upcoming.length + daPianificare + problemi.length + scadenze.length;
     if (actionable === 0) {
       results.push({ commerciale, to, sent: false, reason: 'niente da fare' });
       continue;
@@ -110,6 +125,7 @@ export async function runDailyReminders(options = {}) {
       daPianificare,
       recap,
       problemiTorre: problemi,
+      scadenze,
     });
 
     const subject = overrideTo

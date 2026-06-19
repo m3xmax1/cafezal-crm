@@ -8,6 +8,8 @@ import Catalogo from './pages/Catalogo.jsx';
 import Ordina from './pages/Ordina.jsx';
 import Ordini from './pages/Ordini.jsx';
 import Produzione from './pages/Produzione.jsx';
+import ClientiAttivi from './pages/ClientiAttivi.jsx';
+import StatisticheTorrefazione from './pages/StatisticheTorrefazione.jsx';
 import Profilo from './pages/Profilo.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { useAuth } from './context/AuthContext.jsx';
@@ -53,6 +55,22 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Produzione />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/clienti"
+        element={
+          <ProtectedRoute>
+            <ClientiAttivi />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/stat-torrefazione"
+        element={
+          <ProtectedRoute>
+            <StatisticheTorrefazione />
           </ProtectedRoute>
         }
       />

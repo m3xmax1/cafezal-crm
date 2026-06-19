@@ -70,6 +70,19 @@ export const api = {
     update: (id, payload) => request(`/ordini/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   },
 
+  // Clienti attivi B2B (contratti) + account manager
+  clienti: {
+    list: () => request('/clienti'),
+    create: (p) => request('/clienti', { method: 'POST', body: JSON.stringify(p) }),
+    update: (id, p) => request(`/clienti/${id}`, { method: 'PATCH', body: JSON.stringify(p) }),
+    remove: (id) => request(`/clienti/${id}`, { method: 'DELETE' }),
+  },
+
+  // Statistiche torrefazione
+  stats: {
+    torrefazione: () => request('/stats/torrefazione'),
+  },
+
   // Activity timeline (per lead)
   listActivities: (id) => request(`/opportunities/${id}/activities`),
   addActivity: (id, payload) =>

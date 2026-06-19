@@ -74,6 +74,7 @@ export function buildReminderEmail({
   daPianificare = 0,
   recap = {},
   problemiTorre = [],
+  scadenze = [],
 }) {
   const chip = (label, n, bg, fg) =>
     `<span style="display:inline-block;background:${bg};color:${fg};border-radius:9999px;padding:3px 10px;font-size:13px;font-weight:600;margin-right:6px;">${n} ${label}</span>`;
@@ -85,7 +86,28 @@ export function buildReminderEmail({
       ${upcoming.length ? chip(`entro ${daysAhead}g`, upcoming.length, '#dbeafe', '#1d4ed8') : ''}
       ${daPianificare ? chip('da pianificare', daPianificare, '#f1f5f9', '#475569') : ''}
       ${problemiTorre.length ? chip('problemi ordine', problemiTorre.length, '#fee2e2', '#b91c1c') : ''}
+      ${scadenze.length ? chip('contratti in scadenza', scadenze.length, '#fef3c7', '#b45309') : ''}
     </div>`;
+
+  const scadenzeBlock = scadenze.length
+    ? sectionTitle('📄', 'Contratti in scadenza (entro 3 mesi)', '#b45309') +
+      `<table style="width:100%;border-collapse:collapse;font-size:14px;"><tbody>${scadenze
+        .map((c) => {
+          const d = daysBetween(today, String(c.scadenza_contratto).slice(0, 10));
+          return `
+        <tr>
+          <td style="padding:9px 10px;border-bottom:1px solid #eef2f7;">
+            <div style="font-weight:600;color:#0f172a;">${escapeHtml(c.cliente || c.rag_sociale || '—')}</div>
+            ${c.ordine_minimo_kg ? `<div style="color:#94a3b8;font-size:12px;">min. ${escapeHtml(c.ordine_minimo_kg)} kg/mese</div>` : ''}
+          </td>
+          <td style="padding:9px 10px;border-bottom:1px solid #eef2f7;text-align:right;white-space:nowrap;">
+            <div style="font-weight:600;color:#b45309;">tra ${d} g</div>
+            <div style="color:#94a3b8;font-size:12px;">${fmtDate(String(c.scadenza_contratto).slice(0, 10))}</div>
+          </td>
+        </tr>`;
+        })
+        .join('')}</tbody></table>`
+    : '';
 
   const problemiBlock = problemiTorre.length
     ? sectionTitle('📦', 'Problemi su ordini in torrefazione', '#b91c1c') +
@@ -127,7 +149,7 @@ export function buildReminderEmail({
   ).join('');
 
   const allClear =
-    !overdue.length && !dueToday.length && !upcoming.length && !daPianificare && !problemiTorre.length
+    !overdue.length && !dueToday.length && !upcoming.length && !daPianificare && !problemiTorre.length && !scadenze.length
       ? `<p style="color:#16a34a;font-size:14px;">Tutto in ordine: nessun follow-up in scadenza 🎉</p>`
       : '';
 
@@ -141,6 +163,7 @@ export function buildReminderEmail({
       ${summary}
       ${allClear}
       ${problemiBlock}
+      ${scadenzeBlock}
       ${overdueBlock}
       ${todayBlock}
       ${upcomingBlock}
