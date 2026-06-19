@@ -41,6 +41,9 @@ function FormatoRow({ f, canManage, canSeePrices, onUpdate, onDelete }) {
 
 function ProdottoCard({ p, canManage, canSeePrices, onPatch, onRemove }) {
   const [giac, setGiac] = useState(p.giacenza_kg);
+  const [desc, setDesc] = useState(p.descrizione || '');
+  const [foto, setFoto] = useState(p.foto_url || '');
+  const [editFoto, setEditFoto] = useState(false);
   const [nf, setNf] = useState({ formato: '', prezzo: '', peso_kg: '' });
   const [adding, setAdding] = useState(false);
 
@@ -48,6 +51,17 @@ function ProdottoCard({ p, canManage, canSeePrices, onPatch, onRemove }) {
     if (Number(giac) === Number(p.giacenza_kg)) return;
     const up = await api.prodotti.update(p.id, { giacenza_kg: Number(giac) });
     onPatch(p.id, { giacenza_kg: up.giacenza_kg });
+  }
+  async function saveDesc() {
+    if ((desc || '') === (p.descrizione || '')) return;
+    const up = await api.prodotti.update(p.id, { descrizione: desc.trim() || null });
+    onPatch(p.id, { descrizione: up.descrizione });
+  }
+  async function saveFoto() {
+    setEditFoto(false);
+    if ((foto || '') === (p.foto_url || '')) return;
+    const up = await api.prodotti.update(p.id, { foto_url: foto.trim() || null });
+    onPatch(p.id, { foto_url: up.foto_url });
   }
   async function updFormato(fid, fields) {
     const up = await api.prodotti.updateFormato(fid, fields);
@@ -73,14 +87,47 @@ function ProdottoCard({ p, canManage, canSeePrices, onPatch, onRemove }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card">
       <div className="mb-2 flex items-start justify-between gap-2">
-        <div>
-          <h3 className="font-semibold text-slate-800">{p.nome}</h3>
-          {p.categoria && <span className="text-xs text-slate-400">{p.categoria}</span>}
+        <div className="flex items-start gap-3">
+          {p.foto_url && <img src={p.foto_url} alt={p.nome} className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover" />}
+          <div>
+            <h3 className="font-semibold text-slate-800">{p.nome}</h3>
+            {p.categoria && <span className="text-xs text-slate-400">{p.categoria}</span>}
+          </div>
         </div>
         {canManage && (
           <button onClick={() => onRemove(p.id)} className="text-xs font-medium text-red-600 hover:underline">Elimina</button>
         )}
       </div>
+
+      {/* Descrizione (+ foto) */}
+      {canManage ? (
+        <div className="mb-3">
+          <textarea
+            rows="2"
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm outline-none focus:border-blue-500 focus:bg-white"
+            placeholder="Descrizione del caffè (note di degustazione, origine, blend…)"
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            onBlur={saveDesc}
+          />
+          {editFoto ? (
+            <input
+              className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-xs"
+              placeholder="URL foto (https://…)"
+              value={foto}
+              onChange={(e) => setFoto(e.target.value)}
+              onBlur={saveFoto}
+              autoFocus
+            />
+          ) : (
+            <button onClick={() => setEditFoto(true)} className="mt-1 text-[11px] font-medium text-blue-600 hover:underline">
+              {p.foto_url ? '✎ Cambia foto' : '+ Aggiungi foto'}
+            </button>
+          )}
+        </div>
+      ) : (
+        p.descrizione && <p className="mb-3 text-sm text-slate-600">{p.descrizione}</p>
+      )}
 
       <div className="mb-3 flex items-center gap-2">
         <span className="text-sm text-slate-500">Magazzino:</span>

@@ -118,11 +118,15 @@ export default function Ordina() {
                   return (
                     <div key={p.id} className="border-b border-slate-100 px-4 py-3 last:border-0">
                       <div className="mb-1.5 flex items-center justify-between gap-2">
-                        <span className="font-semibold text-slate-800">{p.nome}</span>
+                        <span className="flex items-center gap-2 font-semibold text-slate-800">
+                          {p.foto_url && <img src={p.foto_url} alt={p.nome} className="h-8 w-8 rounded object-cover" />}
+                          {p.nome}
+                        </span>
                         <span className={`text-xs ${short ? 'font-semibold text-rose-600' : 'text-slate-400'}`}>
                           disp. {kg(p.giacenza_kg)}{short ? ' ⚠' : ''}
                         </span>
                       </div>
+                      {p.descrizione && <p className="mb-2 text-xs leading-snug text-slate-500">{p.descrizione}</p>}
                       <div className="flex flex-wrap gap-2">
                         {(p.prodotti_formati || []).map((f) => (
                           <label key={f.id} className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">
