@@ -1,6 +1,7 @@
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { BrandMark } from './Brand.jsx';
+import NotificationBell from './NotificationBell.jsx';
 
 const navCls = ({ isActive }) =>
   `rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors ${
@@ -67,6 +68,7 @@ export default function Layout({ children, right }) {
 
           <div className="flex items-center gap-2 sm:gap-3">
             {right}
+            <NotificationBell />
             {/* Desktop: user chip → profile */}
             <Link
               to="/profilo"
