@@ -22,10 +22,11 @@ export async function listClienti(user) {
     .order('scadenza_contratto', { ascending: true, nullsFirst: false });
   if (error) throw error;
 
+  // Match against ALL orders (not just b2b): by linked opportunity, or by name.
   const { data: ordini } = await db
     .from('ordini')
     .select('cliente_nome, opportunity_id, peso_totale_kg, totale, data_ordine')
-    .eq('origine', 'b2b');
+    .limit(5000);
 
   const now = Date.now();
   const D90 = 90 * 86400000;
@@ -33,10 +34,12 @@ export async function listClienti(user) {
     const keyCli = norm(c.cliente);
     const keyRag = norm(c.rag_sociale);
     const mine = (ordini || []).filter((o) => {
-      if (c.opportunity_id && o.opportunity_id === c.opportunity_id) return true;
+      if (c.opportunity_id && o.opportunity_id && o.opportunity_id === c.opportunity_id) return true;
       const on = norm(o.cliente_nome);
       if (!on) return false;
-      return (keyCli && on.includes(keyCli)) || (keyRag && keyRag.length > 3 && on.includes(keyRag));
+      if (keyRag && keyRag.length >= 4 && (on === keyRag || on.includes(keyRag))) return true;
+      if (keyCli && keyCli.length >= 4 && (on === keyCli || on.includes(keyCli))) return true;
+      return false;
     });
     let kgTot = 0;
     let kg90 = 0;
