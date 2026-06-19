@@ -1,5 +1,6 @@
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { BrandMark } from './Brand.jsx';
 
 const navCls = ({ isActive }) =>
   `rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors ${
@@ -48,12 +49,10 @@ export default function Layout({ children, right }) {
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
           <div className="flex items-center gap-3 sm:gap-6">
             <Link to="/" className="flex items-center gap-2.5">
-              <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-900 text-sm font-bold tracking-tight text-white shadow-sm">
-                C
-              </div>
+              <BrandMark size={36} className="shadow-sm" />
               <div className="hidden leading-tight sm:block">
-                <h1 className="text-[15px] font-bold tracking-tight text-slate-900">Cafezal CRM</h1>
-                <p className="text-xs text-slate-500">Pipeline vendite</p>
+                <h1 className="text-[15px] font-bold tracking-tight text-slate-900">Cafezal</h1>
+                <p className="text-xs text-slate-500">CRM · Milano</p>
               </div>
             </Link>
             <nav className="flex items-center gap-0.5">

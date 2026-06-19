@@ -179,6 +179,13 @@ export default function Dashboard() {
 
   return (
     <Layout right={headerActions}>
+      <div className="mb-3">
+        <h1 className="text-lg font-bold tracking-tight text-slate-900">
+          Bentornato{commerciale ? `, ${commerciale}` : ''} 👋
+        </h1>
+        <p className="text-sm text-slate-500">Ecco la tua pipeline di oggi.</p>
+      </div>
+
       {/* Toolbar: search + filters */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">
