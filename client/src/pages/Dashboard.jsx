@@ -291,12 +291,17 @@ export default function Dashboard() {
         <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700">
           <span>
             {shown.length > 0
-              ? `${shown.length} lead da pianificare — apri ciascuno e fissa la prossima azione.`
+              ? `${shown.length} lead da pianificare — falli uno alla volta in modalità rapida.`
               : 'Nessun lead da pianificare: tutto sotto controllo 🎉'}
           </span>
-          <button onClick={() => setPlanOnly(false)} className="shrink-0 font-medium text-blue-700 hover:underline">
-            Mostra tutti
-          </button>
+          <div className="flex shrink-0 items-center gap-3">
+            {shown.length > 0 && (
+              <Link to="/pianifica" className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700">
+                Pianifica in sequenza →
+              </Link>
+            )}
+            <button onClick={() => setPlanOnly(false)} className="font-medium text-blue-700 hover:underline">Mostra tutti</button>
+          </div>
         </div>
       )}
 

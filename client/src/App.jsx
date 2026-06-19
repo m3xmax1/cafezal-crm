@@ -11,6 +11,7 @@ import Produzione from './pages/Produzione.jsx';
 import ClientiAttivi from './pages/ClientiAttivi.jsx';
 import StatisticheTorrefazione from './pages/StatisticheTorrefazione.jsx';
 import Eventi from './pages/Eventi.jsx';
+import Pianifica from './pages/Pianifica.jsx';
 import Profilo from './pages/Profilo.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { useAuth } from './context/AuthContext.jsx';
@@ -72,6 +73,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Eventi />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pianifica"
+        element={
+          <ProtectedRoute>
+            <Pianifica />
           </ProtectedRoute>
         }
       />
