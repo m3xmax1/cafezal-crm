@@ -31,6 +31,7 @@ export default function Layout({ children, right }) {
       { to: '/agenda', label: 'Agenda' },
       { to: '/mappa', label: 'Mappa' },
       { to: '/clienti', label: 'Clienti' },
+      { to: '/eventi', label: 'Eventi' },
       { to: '/statistiche', label: 'Statistiche' },
     ];
     if (isAdmin || isTorrefazione)

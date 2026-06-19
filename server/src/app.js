@@ -11,6 +11,7 @@ import prodottiRoutes from './routes/prodotti.routes.js';
 import ordiniRoutes from './routes/ordini.routes.js';
 import clientiRoutes from './routes/clienti.routes.js';
 import statsRoutes from './routes/stats.routes.js';
+import eventiRoutes from './routes/eventi.routes.js';
 
 export function createApp() {
   const app = express();
@@ -35,6 +36,7 @@ export function createApp() {
   app.use('/api/prodotti', prodottiRoutes);
   app.use('/api/ordini', ordiniRoutes);
   app.use('/api/clienti', clientiRoutes);
+  app.use('/api/eventi', eventiRoutes);
   app.use('/api/stats', statsRoutes);
   app.use('/api/cron', cronRoutes);
 
