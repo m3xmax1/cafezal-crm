@@ -122,7 +122,7 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-slate-900/70 p-3 sm:p-6"
+      className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-slate-950 p-3 sm:p-6"
       onClick={(e) => {
         e.stopPropagation();
         onClose();
