@@ -35,6 +35,12 @@ export async function listOrdini(user, filters = {}) {
 
 /** Create an order (retail from a store, or b2b). Decrements stock; flags shortfalls. */
 export async function createOrdine(user, payload) {
+  // Default-deny: solo chi ha un ruolo (store, commerciale, torrefazione, admin)
+  // può creare ordini. Blocca gli account senza ruolo (es. da signup pubblico),
+  // che altrimenti scriverebbero ordini e scalerebbero il magazzino reale.
+  if (!user.store && !user.commerciale && !user.isAdmin && !user.isTorrefazione) {
+    throw httpError('Non autorizzato', 403);
+  }
   const righe = Array.isArray(payload.righe) ? payload.righe : [];
   if (!righe.length) throw httpError('Ordine vuoto', 400);
 
