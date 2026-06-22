@@ -81,6 +81,7 @@ export const api = {
     list: (stato) => request(`/ordini${stato ? `?stato=${encodeURIComponent(stato)}` : ''}`),
     create: (payload) => request('/ordini', { method: 'POST', body: JSON.stringify(payload) }),
     update: (id, payload) => request(`/ordini/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+    correct: (id, payload) => request(`/ordini/${id}/correct`, { method: 'POST', body: JSON.stringify(payload) }),
   },
 
   // Clienti attivi B2B (contratti) + account manager

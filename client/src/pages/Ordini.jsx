@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import Layout from '../components/Layout.jsx';
+import CorreggiOrdineModal from '../components/CorreggiOrdineModal.jsx';
 
 const STATO_META = {
   ricevuto: { label: 'Ricevuto', dot: 'bg-blue-500', badge: 'bg-blue-100 text-blue-800' },
@@ -20,13 +21,18 @@ const nextStato = (s) => {
 const kg = (v) => `${Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 2 })} kg`;
 const fmtDate = (s) => (s ? new Date(s).toLocaleDateString('it-IT') : '');
 
-function OrdineCard({ o, canManage, onPatch, compact }) {
+function OrdineCard({ o, canManage, onPatch, compact, onCorrect }) {
   const [open, setOpen] = useState(false);
   const [ddt, setDdt] = useState(o.ddt || '');
   const [tracking, setTracking] = useState(o.tracking || '');
   const [busy, setBusy] = useState(false);
   const warn = (o.note || '').includes('⚠');
   const nxt = nextStato(o.stato);
+
+  function flagProblema() {
+    const r = window.prompt('Qual è il problema? (verrà mostrato al locale per la correzione)');
+    if (r !== null) save({ stato: 'problema', problema_nota: r.trim() || null });
+  }
 
   async function save(fields) {
     setBusy(true);
@@ -51,7 +57,10 @@ function OrdineCard({ o, canManage, onPatch, compact }) {
         {!compact && <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${STATO_META[o.stato]?.badge}`}>{STATO_META[o.stato]?.label}</span>}
       </div>
 
-      {warn && <div className="mt-1.5 rounded bg-amber-50 px-2 py-1 text-[11px] text-amber-800">{o.note}</div>}
+      {o.note && <div className={`mt-1.5 rounded px-2 py-1 text-[11px] ${warn ? 'bg-amber-50 text-amber-800' : 'bg-slate-50 text-slate-600'}`}>{o.note}</div>}
+      {o.problema_nota && (
+        <div className="mt-1.5 rounded bg-rose-50 px-2 py-1 text-[11px] text-rose-800"><span className="font-semibold">⚠ Problema:</span> {o.problema_nota}</div>
+      )}
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {canManage && nxt && (
@@ -60,8 +69,13 @@ function OrdineCard({ o, canManage, onPatch, compact }) {
           </button>
         )}
         {canManage && o.stato !== 'problema' && (
-          <button onClick={() => save({ stato: 'problema' })} disabled={busy} className="rounded-md border border-rose-200 px-2 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-50">
+          <button onClick={flagProblema} disabled={busy} className="rounded-md border border-rose-200 px-2 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-50">
             ⚠ Problema
+          </button>
+        )}
+        {onCorrect && o.stato === 'problema' && (
+          <button onClick={() => onCorrect(o)} className="rounded-md bg-rose-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-rose-700">
+            ✏️ Correggi e re-invia
           </button>
         )}
         <button onClick={() => setOpen((v) => !v)} className="rounded-md px-1.5 py-1 text-[11px] font-medium text-blue-600 hover:underline">
@@ -108,6 +122,7 @@ export default function Ordini() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [view, setView] = useState('pipeline'); // pipeline | archivio
+  const [correcting, setCorrecting] = useState(null); // ordine in correzione (store)
 
   function load() {
     setLoading(true);
@@ -133,14 +148,20 @@ export default function Ordini() {
   const archiviati = useMemo(() => items.filter((o) => o.stato === 'archiviato'), [items]);
   const attivi = COLS.reduce((n, s) => n + byStato[s].length, 0);
 
-  // ── Store: simple read-only list ──
+  // ── Store: lista con correzione degli ordini segnalati ──
   if (store) {
+    const daCorreggere = items.filter((o) => o.stato === 'problema');
     return (
       <Layout>
         <div className="mb-4">
           <h2 className="text-xl font-bold tracking-tight text-slate-900">I miei ordini</h2>
           <p className="text-sm text-slate-500">Storico e stato dei tuoi ordini.</p>
         </div>
+        {daCorreggere.length > 0 && (
+          <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            ⚠ <strong>{daCorreggere.length} ordine/i da correggere</strong> — la torrefazione ha segnalato un problema. Usa “Correggi e re-invia”.
+          </div>
+        )}
         {loading ? (
           <div className="grid place-items-center py-20 text-slate-400">Caricamento…</div>
         ) : items.length === 0 ? (
@@ -148,9 +169,16 @@ export default function Ordini() {
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {items.map((o) => (
-              <OrdineCard key={o.id} o={o} canManage={false} onPatch={onPatch} />
+              <OrdineCard key={o.id} o={o} canManage={false} onPatch={onPatch} onCorrect={setCorrecting} />
             ))}
           </div>
+        )}
+        {correcting && (
+          <CorreggiOrdineModal
+            ordine={correcting}
+            onClose={() => setCorrecting(null)}
+            onSaved={(up) => { onPatch(up.id, up); setCorrecting(null); }}
+          />
         )}
       </Layout>
     );

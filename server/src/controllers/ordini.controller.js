@@ -25,3 +25,11 @@ export async function update(req, res, next) {
     return next(e);
   }
 }
+
+export async function correct(req, res, next) {
+  try {
+    res.json(await service.correctOrdine(req.user, req.params.id, req.body || {}));
+  } catch (e) {
+    next(e);
+  }
+}

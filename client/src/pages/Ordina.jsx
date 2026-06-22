@@ -14,6 +14,7 @@ export default function Ordina() {
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(null); // { shortfalls }
   const [dataConsegna, setDataConsegna] = useState('');
+  const [note, setNote] = useState('');
 
   useEffect(() => {
     api.prodotti
@@ -52,10 +53,11 @@ export default function Ordina() {
     setSending(true);
     setError('');
     try {
-      const res = await api.ordini.create({ righe, data_consegna: dataConsegna || null });
+      const res = await api.ordini.create({ righe, data_consegna: dataConsegna || null, note: note.trim() || null });
       setDone({ shortfalls: res.shortfalls || [] });
       setQty({});
       setDataConsegna('');
+      setNote('');
     } catch (e) {
       setError(e.message);
     } finally {
@@ -154,22 +156,31 @@ export default function Ordina() {
       {/* Sticky summary bar */}
       {!loading && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur">
-          <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-            <div className="flex items-center gap-4 text-sm">
-              <span className="text-slate-500">Righe: <strong className="text-slate-800">{totalRighe}</strong></span>
-              <span className="text-slate-500">Totale: <strong className="text-slate-800">{kg(totalKg)}</strong></span>
-              <label className="flex items-center gap-1.5 text-slate-500">
-                Consegna:
-                <input type="date" value={dataConsegna} onChange={(e) => setDataConsegna(e.target.value)} className="rounded border border-slate-300 px-2 py-1 text-sm" />
-              </label>
+          <div className="mx-auto max-w-[1600px] px-4 py-3 sm:px-6">
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Note per la torrefazione (facoltative)…"
+              className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+            />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-slate-500">Righe: <strong className="text-slate-800">{totalRighe}</strong></span>
+                <span className="text-slate-500">Totale: <strong className="text-slate-800">{kg(totalKg)}</strong></span>
+                <label className="flex items-center gap-1.5 text-slate-500">
+                  Consegna:
+                  <input type="date" value={dataConsegna} onChange={(e) => setDataConsegna(e.target.value)} className="rounded border border-slate-300 px-2 py-1 text-sm" />
+                </label>
+              </div>
+              <button
+                onClick={invia}
+                disabled={sending || totalRighe === 0}
+                className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+              >
+                {sending ? 'Invio…' : 'Invia ordine'}
+              </button>
             </div>
-            <button
-              onClick={invia}
-              disabled={sending || totalRighe === 0}
-              className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
-            >
-              {sending ? 'Invio…' : 'Invia ordine'}
-            </button>
           </div>
         </div>
       )}
