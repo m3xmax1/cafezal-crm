@@ -1,10 +1,9 @@
 import { useState } from 'react';
 
-// Cafezal brand mark — usa il logo ufficiale se presente in client/public,
+// Cafezal brand mark — usa il logo ufficiale (PNG ottimizzato in client/public),
 // altrimenti ricade su una SVG placeholder (chicco di caffè in tono espresso).
-// Per usare i loghi veri: salvateli come
-//   client/public/cafezal-mark.svg   (icona, per l'header)
-//   client/public/cafezal-logo.svg   (logo completo, per il login)
+// I PNG sono rasterizzati dai sorgenti in client/brand-src/*.svg (loghi originali
+// ~1.5MB) a misura di display: header ~40px, login 84px → ~30KB totali.
 
 function FallbackMark({ size, className }) {
   return (
@@ -38,10 +37,10 @@ function LogoImg({ src, size, height, className }) {
 
 // Square-ish mark for the app header.
 export function BrandMark({ size = 48, className = '' }) {
-  return <LogoImg src="/cafezal-mark.svg" size={size} className={className} />;
+  return <LogoImg src="/cafezal-mark.png" size={size} className={className} />;
 }
 
 // Larger logo (può essere il lockup completo) per il login.
 export function BrandLogo({ height = 72, className = '' }) {
-  return <LogoImg src="/cafezal-logo.svg" size={height} height={height} className={className} />;
+  return <LogoImg src="/cafezal-logo.png" size={height} height={height} className={className} />;
 }

@@ -14,7 +14,7 @@ function assertAccess(user) {
 
 const FIELDS = [
   'richiesta', 'contatti', 'tipologia_fiera', 'status', 'prossima_fiera_data', 'commerciale_assegnato',
-  'citta', 'note', 'attivo', 'prossima_azione', 'data_prossimo_followup',
+  'citta', 'note', 'motivo_ko', 'attivo', 'prossima_azione', 'data_prossimo_followup',
   'data_evento', 'data_allestimento', 'data_smontaggio', 'orari_evento', 'pause', 'pause_quando',
   'permessi_status', 'acqua_fornita', 'energia_comunicata', 'spazio_comunicato', 'scia_comunicata',
   'latte', 'avena', 'persone_previste', 'catering', 'catering_note', 'baristi',

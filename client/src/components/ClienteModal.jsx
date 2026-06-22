@@ -1,10 +1,20 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { ACCOUNT_MANAGERS } from '../lib/constants.js';
 import { api } from '../lib/api.js';
 
 const d10 = (s) => (s ? String(s).slice(0, 10) : '');
 const todayISO = () => new Date().toISOString().slice(0, 10);
+const thisMonth = () => new Date().toISOString().slice(0, 7);
+
+// Consumo mensile inserito a mano: array di { mese: 'YYYY-MM', kg }.
+function normConsumi(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((r) => ({ mese: String(r?.mese || '').slice(0, 7), kg: r?.kg ?? '' }))
+    .filter((r) => r.mese)
+    .sort((a, b) => a.mese.localeCompare(b.mese));
+}
 function addMonthsISO(iso, months) {
   if (!iso || !months) return '';
   const d = new Date(iso);
@@ -28,7 +38,6 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted, ren
     for (const k of BOOL) f[k] = cliente?.[k] ?? false;
     f.account_manager = cliente?.account_manager || '';
     f.tags = (cliente?.tags || []).join(', ');
-    f.opportunity_id = cliente?.opportunity_id || '';
     if (renew) {
       // Suggest a fresh period for the renewed contract.
       f.firma = todayISO();
@@ -43,18 +52,28 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted, ren
   const set = (k, v) => setForm((s) => ({ ...s, [k]: v }));
   const st = cliente?.stats;
 
-  // Collegamento al lead CRM (cerca per nome).
-  const [opps, setOpps] = useState([]);
-  const [oppQuery, setOppQuery] = useState('');
-  useEffect(() => {
-    api.list({}).then((d) => setOpps((d || []).map((o) => ({ id: o.id, azienda: o.azienda })))).catch(() => {});
-  }, []);
-  const linkedLead = opps.find((o) => o.id === form.opportunity_id);
-  const oppMatches = useMemo(() => {
-    const q = oppQuery.trim().toLowerCase();
-    if (!q) return [];
-    return opps.filter((o) => (o.azienda || '').toLowerCase().includes(q)).slice(0, 8);
-  }, [opps, oppQuery]);
+  // Consumo mensile manuale (kg per mese) — base per statistiche e alert sotto-minimo.
+  const [consumi, setConsumi] = useState(() => normConsumi(cliente?.consumi));
+  const setConsumiRow = (i, k, v) => setConsumi((cur) => cur.map((r, idx) => (idx === i ? { ...r, [k]: v } : r)));
+  const removeMese = (i) => setConsumi((cur) => cur.filter((_, idx) => idx !== i));
+  const addMese = () =>
+    setConsumi((cur) => {
+      let m = thisMonth();
+      if (cur.length) {
+        const [y, mo] = cur[cur.length - 1].mese.split('-').map(Number);
+        m = new Date(y, mo, 1).toISOString().slice(0, 7); // mese successivo all'ultimo
+      }
+      return [...cur, { mese: m, kg: '' }];
+    });
+  const consumiClean = useMemo(
+    () => consumi.filter((r) => r.mese && r.kg !== '' && !Number.isNaN(Number(r.kg))).map((r) => ({ mese: r.mese, kg: Number(r.kg) })).sort((a, b) => a.mese.localeCompare(b.mese)),
+    [consumi],
+  );
+  const consumiStats = useMemo(() => {
+    const kgTot = consumiClean.reduce((s, r) => s + r.kg, 0);
+    const nMesi = consumiClean.length;
+    return { kgTot, nMesi, media: nMesi ? kgTot / nMesi : 0 };
+  }, [consumiClean]);
 
   async function save() {
     if (!form.cliente.trim() && !form.rag_sociale.trim()) {
@@ -64,7 +83,7 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted, ren
     setError('');
     setSaving(true);
     try {
-      const payload = { account_manager: form.account_manager || null, opportunity_id: form.opportunity_id || null, tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [] };
+      const payload = { account_manager: form.account_manager || null, consumi: consumiClean, tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [] };
       for (const k of TEXT) payload[k] = form[k] === '' ? null : form[k];
       for (const k of NUM) payload[k] = form[k] === '' ? null : Number(form[k]);
       for (const k of DATE) payload[k] = form[k] || null;
@@ -133,10 +152,10 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted, ren
 
           {st && (
             <div className="mb-4 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-4">
-              <div><div className="text-[11px] uppercase text-slate-400">Ordini B2B</div><div className="font-bold text-slate-800">{st.nOrdini}</div></div>
-              <div><div className="text-[11px] uppercase text-slate-400">Kg 90g</div><div className="font-bold text-slate-800">{kg(st.kg90)}</div></div>
-              <div><div className="text-[11px] uppercase text-slate-400">Kg totali</div><div className="font-bold text-slate-800">{kg(st.kgTot)}</div></div>
-              <div><div className="text-[11px] uppercase text-slate-400">Ultimo ordine</div><div className="font-bold text-slate-800">{st.ultimoOrdine || '—'}</div></div>
+              <div><div className="text-[11px] uppercase text-slate-400">Mesi registrati</div><div className="font-bold text-slate-800">{st.nMesi ?? st.nOrdini ?? 0}</div></div>
+              <div><div className="text-[11px] uppercase text-slate-400">Media / mese</div><div className="font-bold text-slate-800">{kg(st.mediaMese)}</div></div>
+              <div><div className="text-[11px] uppercase text-slate-400">Kg ultimi 90g</div><div className="font-bold text-slate-800">{kg(st.kg90)}</div></div>
+              <div><div className="text-[11px] uppercase text-slate-400">Ultimo mese</div><div className="font-bold text-slate-800">{st.ultimoMese || st.ultimoOrdine || '—'}</div></div>
             </div>
           )}
 
@@ -153,26 +172,25 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted, ren
               </select>
             </div>
             <div className="sm:col-span-2"><label className={label}>Tag (separati da virgola)</label><input className={field} value={form.tags} onChange={(e) => set('tags', e.target.value)} placeholder="es. premium, milano, hotel" /></div>
-            <div className="sm:col-span-2">
-              <label className={label}>Lead CRM collegato <span className="text-slate-400">(per statistiche ordini accurate)</span></label>
-              {linkedLead || form.opportunity_id ? (
-                <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm">
-                  <span className="truncate text-emerald-800">🔗 {linkedLead ? linkedLead.azienda : 'Lead collegato'}</span>
-                  <button type="button" onClick={() => { set('opportunity_id', ''); setOppQuery(''); }} className="shrink-0 text-xs font-medium text-rose-600 hover:underline">Scollega</button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <input className={field} value={oppQuery} onChange={(e) => setOppQuery(e.target.value)} placeholder="Cerca un lead per nome…" />
-                  {oppMatches.length > 0 && (
-                    <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-                      {oppMatches.map((o) => (
-                        <button type="button" key={o.id} onClick={() => { set('opportunity_id', o.id); setOppQuery(''); }} className="block w-full truncate px-3 py-1.5 text-left text-sm hover:bg-slate-50">{o.azienda}</button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+          </div>
+
+          <p className={section}>Consumo mensile (kg)</p>
+          <p className="-mt-1 mb-2 text-xs text-slate-400">Inserisci mese per mese quanto ha ordinato il cliente. Da qui calcoliamo andamento, media e l&apos;alert &quot;sotto minimo&quot;.</p>
+          <div className="space-y-2">
+            {consumi.map((r, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input type="month" className={`${field} sm:max-w-[11rem]`} value={r.mese} onChange={(e) => setConsumiRow(i, 'mese', e.target.value)} />
+                <input type="number" min="0" step="0.1" className={field} value={r.kg} onChange={(e) => setConsumiRow(i, 'kg', e.target.value)} placeholder="kg" />
+                <button type="button" onClick={() => removeMese(i)} className="shrink-0 rounded-lg px-2 py-2 text-slate-300 hover:bg-rose-50 hover:text-rose-500" aria-label="Rimuovi mese">✕</button>
+              </div>
+            ))}
+            {consumi.length === 0 && <p className="text-sm text-slate-400">Nessun mese inserito ancora.</p>}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <button type="button" onClick={addMese} className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50">+ Aggiungi mese</button>
+            {consumiStats.nMesi > 0 && (
+              <div className="text-xs text-slate-500">{consumiStats.nMesi} mesi · totale <strong className="text-slate-700">{kg(consumiStats.kgTot)}</strong> · media <strong className="text-slate-700">{kg(consumiStats.media)}/mese</strong></div>
+            )}
           </div>
 
           <p className={section}>Contratto</p>

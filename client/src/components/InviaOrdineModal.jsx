@@ -16,6 +16,7 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
   const [error, setError] = useState('');
   const [qty, setQty] = useState({}); // formato_id -> quantità
   const [price, setPrice] = useState({}); // formato_id -> prezzo di vendita (override commerciale)
+  const [openCats, setOpenCats] = useState({}); // categoria -> espansa?
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(null);
 
@@ -61,6 +62,23 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
     }
     return Object.entries(g).sort((a, b) => a[0].localeCompare(b[0]));
   }, [cat]);
+
+  // Apri la prima categoria di default quando il catalogo è caricato.
+  useEffect(() => {
+    if (grouped.length && Object.keys(openCats).length === 0) {
+      setOpenCats({ [grouped[0][0]]: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grouped]);
+
+  const toggleCat = (c) => setOpenCats((o) => ({ ...o, [c]: !o[c] }));
+  // Quanti formati hanno una quantità selezionata, in una categoria (badge sull'header).
+  const catSelected = (prods) => {
+    let n = 0;
+    for (const p of prods)
+      for (const f of p.prodotti_formati || []) if (f.attivo !== false && Number(qty[f.id]) > 0) n += 1;
+    return n;
+  };
 
   // Live totals + per-product shortfall preview.
   const { righe, totale, pesoTot, righeCount, shortByProd } = useMemo(() => {
@@ -122,17 +140,17 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-slate-950 p-3 sm:p-6"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/95 p-3 sm:p-6"
       onClick={(e) => {
         e.stopPropagation();
         onClose();
       }}
     >
       <div
-        className="my-4 w-full max-w-4xl rounded-2xl bg-white shadow-2xl"
+        className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-3.5">
           <div>
             <h3 className="text-base font-bold text-slate-900">📦 Invia ordine alla torrefazione</h3>
             <p className="text-xs text-slate-500">{opp?.azienda || 'Ordine B2B'}</p>
@@ -145,7 +163,7 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
         </div>
 
         {done ? (
-          <div className="px-5 py-8 text-center">
+          <div className="overflow-y-auto px-5 py-8 text-center">
             <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-emerald-100 text-2xl">✓</div>
             <h4 className="text-lg font-bold text-slate-900">Ordine #{done.ordine?.id} inviato</h4>
             <p className="mt-1 text-sm text-slate-500">La torrefazione lo vede in pipeline tra i nuovi ordini.</p>
@@ -164,108 +182,138 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
             </button>
           </div>
         ) : (
-          <div className="grid max-h-[78vh] grid-cols-1 lg:grid-cols-5">
-            {/* Product picker */}
-            <div className="overflow-y-auto border-b border-slate-100 p-4 lg:col-span-3 lg:border-b-0 lg:border-r">
-              {error && <div className="mb-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-              {!loading && (
-                <p className="mb-3 rounded-md bg-blue-50 px-2.5 py-1.5 text-[11px] text-blue-700">
-                  💶 Prezzi di default dalla torrefazione — modificabili per questo ordine.
-                </p>
-              )}
-              {loading ? (
-                <div className="grid place-items-center py-16 text-slate-400">Caricamento catalogo…</div>
-              ) : (
-                grouped.map(([categoria, prods]) => (
-                  <div key={categoria} className="mb-4">
-                    <h4 className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-400">{categoria}</h4>
-                    <div className="space-y-1">
-                      {prods.map((p) => (
-                        <div key={p.id} className="rounded-lg border border-slate-200 p-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-semibold text-slate-800">{p.nome}</span>
-                            <span className={`text-[11px] ${shortByProd[p.id] !== undefined ? 'font-semibold text-amber-600' : 'text-slate-400'}`}>
-                              disp. {kg(p.giacenza_kg)}
+          <>
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+              {/* Product picker — sezioni categoria espandibili */}
+              <div className="border-b border-slate-100 p-4 lg:min-h-0 lg:w-3/5 lg:overflow-y-auto lg:border-b-0 lg:border-r">
+                {error && <div className="mb-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+                {!loading && (
+                  <p className="mb-3 rounded-md bg-blue-50 px-2.5 py-1.5 text-[11px] text-blue-700">
+                    💶 Prezzi di default dalla torrefazione — modificabili per questo ordine.
+                  </p>
+                )}
+                {loading ? (
+                  <div className="grid place-items-center py-16 text-slate-400">Caricamento catalogo…</div>
+                ) : (
+                  <div className="space-y-2">
+                    {grouped.map(([categoria, prods]) => {
+                      const aperta = !!openCats[categoria];
+                      const sel = catSelected(prods);
+                      return (
+                        <div key={categoria} className="overflow-hidden rounded-lg border border-slate-200">
+                          <button
+                            type="button"
+                            onClick={() => toggleCat(categoria)}
+                            className="flex w-full items-center justify-between gap-2 bg-slate-50 px-3 py-2 text-left hover:bg-slate-100"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="text-xs font-bold uppercase tracking-wide text-slate-600">{categoria}</span>
+                              <span className="text-[11px] text-slate-400">{prods.length}</span>
+                              {sel > 0 && (
+                                <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{sel} selez.</span>
+                              )}
                             </span>
-                          </div>
-                          <div className="mt-1.5 flex flex-wrap gap-1.5">
-                            {(p.prodotti_formati || []).filter((f) => f.attivo !== false).map((f) => (
-                              <div key={f.id} className="flex items-center gap-1 rounded-md bg-slate-50 px-2 py-1 text-xs">
-                                <span className="w-10 font-medium text-slate-600">{f.formato}</span>
-                                {f.prezzo != null && (
-                                  <span className="flex items-center gap-0.5 text-slate-400" title="Prezzo di vendita — modificabile dal commerciale">
-                                    €
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      step="0.01"
-                                      value={price[f.id] !== undefined ? price[f.id] : f.prezzo ?? ''}
-                                      onChange={(e) => setPrice((m) => ({ ...m, [f.id]: e.target.value }))}
-                                      className={`w-14 rounded border bg-white px-1 py-0.5 text-right focus:border-blue-500 focus:outline-none ${
-                                        price[f.id] !== undefined && Number(price[f.id]) !== Number(f.prezzo)
-                                          ? 'border-blue-300 font-semibold text-blue-700'
-                                          : 'border-slate-200 text-slate-600'
-                                      }`}
-                                    />
-                                  </span>
-                                )}
-                                <span className="ml-auto text-slate-400">×</span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  inputMode="numeric"
-                                  value={qty[f.id] || ''}
-                                  onChange={(e) => setQty((m) => ({ ...m, [f.id]: e.target.value }))}
-                                  placeholder="0"
-                                  className="w-12 rounded border border-slate-300 px-1.5 py-0.5 text-right focus:border-blue-500 focus:outline-none"
-                                />
-                              </div>
-                            ))}
-                          </div>
-                          {shortByProd[p.id] !== undefined && (
-                            <p className="mt-1 text-[11px] text-amber-600">⚠ Oltre la giacenza — la torrefazione verrà avvisata per il riassortimento.</p>
+                            <svg
+                              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                              className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${aperta ? 'rotate-180' : ''}`}
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+                            </svg>
+                          </button>
+                          {aperta && (
+                            <div className="space-y-1 p-2">
+                              {prods.map((p) => (
+                                <div key={p.id} className="rounded-lg border border-slate-200 p-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm font-semibold text-slate-800">{p.nome}</span>
+                                    <span className={`text-[11px] ${shortByProd[p.id] !== undefined ? 'font-semibold text-amber-600' : 'text-slate-400'}`}>
+                                      disp. {kg(p.giacenza_kg)}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                    {(p.prodotti_formati || []).filter((f) => f.attivo !== false).map((f) => (
+                                      <div key={f.id} className="flex items-center gap-1 rounded-md bg-slate-50 px-2 py-1 text-xs">
+                                        <span className="w-10 font-medium text-slate-600">{f.formato}</span>
+                                        {f.prezzo != null && (
+                                          <span className="flex items-center gap-0.5 text-slate-400" title="Prezzo di vendita — modificabile dal commerciale">
+                                            €
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              step="0.01"
+                                              value={price[f.id] !== undefined ? price[f.id] : f.prezzo ?? ''}
+                                              onChange={(e) => setPrice((m) => ({ ...m, [f.id]: e.target.value }))}
+                                              className={`w-14 rounded border bg-white px-1 py-0.5 text-right focus:border-blue-500 focus:outline-none ${
+                                                price[f.id] !== undefined && Number(price[f.id]) !== Number(f.prezzo)
+                                                  ? 'border-blue-300 font-semibold text-blue-700'
+                                                  : 'border-slate-200 text-slate-600'
+                                              }`}
+                                            />
+                                          </span>
+                                        )}
+                                        <span className="ml-auto text-slate-400">×</span>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          inputMode="numeric"
+                                          value={qty[f.id] || ''}
+                                          onChange={(e) => setQty((m) => ({ ...m, [f.id]: e.target.value }))}
+                                          placeholder="0"
+                                          className="w-12 rounded border border-slate-300 px-1.5 py-0.5 text-right focus:border-blue-500 focus:outline-none"
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {shortByProd[p.id] !== undefined && (
+                                    <p className="mt-1 text-[11px] text-amber-600">⚠ Oltre la giacenza — la torrefazione verrà avvisata per il riassortimento.</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
-                ))
-              )}
+                )}
+              </div>
+
+              {/* Shipping */}
+              <div className="p-4 lg:min-h-0 lg:w-2/5 lg:overflow-y-auto">
+                <h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Spedizione</h4>
+                <div className="space-y-2">
+                  <input className={fieldCls} placeholder="Cliente / ragione sociale" value={ship.cliente_nome} onChange={(e) => setS('cliente_nome', e.target.value)} />
+                  <input className={fieldCls} placeholder="Persona di riferimento" value={ship.persona} onChange={(e) => setS('persona', e.target.value)} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input className={fieldCls} placeholder="Email" value={ship.email} onChange={(e) => setS('email', e.target.value)} />
+                    <input className={fieldCls} placeholder="Telefono" value={ship.telefono} onChange={(e) => setS('telefono', e.target.value)} />
+                  </div>
+                  <textarea rows="2" className={fieldCls} placeholder="Indirizzo di consegna" value={ship.indirizzo_consegna} onChange={(e) => setS('indirizzo_consegna', e.target.value)} />
+                  <div>
+                    <label className="text-xs text-slate-500">Data consegna desiderata</label>
+                    <input type="date" className={fieldCls} value={ship.data_consegna} onChange={(e) => setS('data_consegna', e.target.value)} />
+                  </div>
+                  <textarea rows="2" className={fieldCls} placeholder="Note per la torrefazione" value={ship.note} onChange={(e) => setS('note', e.target.value)} />
+                </div>
+              </div>
             </div>
 
-            {/* Shipping + summary */}
-            <div className="flex flex-col overflow-y-auto p-4 lg:col-span-2">
-              <h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Spedizione</h4>
-              <div className="space-y-2">
-                <input className={fieldCls} placeholder="Cliente / ragione sociale" value={ship.cliente_nome} onChange={(e) => setS('cliente_nome', e.target.value)} />
-                <input className={fieldCls} placeholder="Persona di riferimento" value={ship.persona} onChange={(e) => setS('persona', e.target.value)} />
-                <div className="grid grid-cols-2 gap-2">
-                  <input className={fieldCls} placeholder="Email" value={ship.email} onChange={(e) => setS('email', e.target.value)} />
-                  <input className={fieldCls} placeholder="Telefono" value={ship.telefono} onChange={(e) => setS('telefono', e.target.value)} />
-                </div>
-                <textarea rows="2" className={fieldCls} placeholder="Indirizzo di consegna" value={ship.indirizzo_consegna} onChange={(e) => setS('indirizzo_consegna', e.target.value)} />
-                <div>
-                  <label className="text-xs text-slate-500">Data consegna desiderata</label>
-                  <input type="date" className={fieldCls} value={ship.data_consegna} onChange={(e) => setS('data_consegna', e.target.value)} />
-                </div>
-                <textarea rows="2" className={fieldCls} placeholder="Note per la torrefazione" value={ship.note} onChange={(e) => setS('note', e.target.value)} />
+            {/* Footer sempre visibile: totali + invio */}
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3">
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-slate-500">Righe <strong className="text-slate-800">{righeCount}</strong></span>
+                <span className="text-slate-500">Peso <strong className="text-slate-800">{kg(pesoTot)}</strong></span>
+                <span className="text-slate-500">Totale <strong className="text-slate-900">{eur(totale)}</strong></span>
               </div>
-
-              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
-                <div className="flex justify-between"><span className="text-slate-500">Righe</span><span className="font-semibold">{righeCount}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Peso totale</span><span className="font-semibold">{kg(pesoTot)}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Totale</span><span className="font-bold text-slate-900">{eur(totale)}</span></div>
-              </div>
-
               <button
                 onClick={submit}
                 disabled={submitting || righeCount === 0}
-                className="mt-3 w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
               >
                 {submitting ? 'Invio…' : 'Invia ordine'}
               </button>
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>,

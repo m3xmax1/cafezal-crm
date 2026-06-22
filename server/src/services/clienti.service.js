@@ -16,7 +16,46 @@ function assertAccess(user) {
 
 const norm = (s) => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
 
-/** List active clients, each enriched with order stats (matched by name/opportunity). */
+/** Set di 'YYYY-MM' per il mese corrente e i precedenti n-1 (per "ultimi 90 giorni"). */
+function lastNMonths(n, now) {
+  const d = new Date(now);
+  const out = new Set();
+  for (let i = 0; i < n; i += 1) {
+    const m = new Date(d.getFullYear(), d.getMonth() - i, 1);
+    out.add(`${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`);
+  }
+  return out;
+}
+
+/** Statistiche dal consumo mensile inserito a mano (array { mese, kg }). null se assente. */
+function statsFromConsumi(consumi, now) {
+  const rows = Array.isArray(consumi) ? consumi.filter((r) => r && r.mese) : [];
+  if (!rows.length) return null;
+  const recent = lastNMonths(3, now);
+  let kgTot = 0;
+  let kg90 = 0;
+  let ultimoMese = null;
+  for (const r of rows) {
+    const k = Number(r.kg) || 0;
+    kgTot += k;
+    const mese = String(r.mese).slice(0, 7);
+    if (recent.has(mese)) kg90 += k;
+    if (!ultimoMese || mese > ultimoMese) ultimoMese = mese;
+  }
+  const nMesi = rows.length;
+  return {
+    source: 'consumi',
+    nMesi,
+    nOrdini: nMesi,
+    kgTot: Math.round(kgTot * 100) / 100,
+    kg90: Math.round(kg90 * 100) / 100,
+    mediaMese: nMesi ? Math.round((kgTot / nMesi) * 100) / 100 : 0,
+    ultimoMese,
+    ultimoOrdine: ultimoMese,
+  };
+}
+
+/** List active clients, each enriched with consumption stats (manual consumi, else matched orders). */
 export async function listClienti(user) {
   assertAccess(user);
   const { data: clienti, error } = await db
@@ -34,6 +73,10 @@ export async function listClienti(user) {
   const now = Date.now();
   const D90 = 90 * 86400000;
   return (clienti || []).map((c) => {
+    // Il consumo manuale, se presente, è la fonte autoritativa delle statistiche.
+    const cs = statsFromConsumi(c.consumi, now);
+    if (cs) return { ...c, stats: cs };
+
     const keyCli = norm(c.cliente);
     const keyRag = norm(c.rag_sociale);
     const mine = (ordini || []).filter((o) => {
@@ -75,7 +118,7 @@ const EDITABLE = [
   'scadenza_contratto', 'rinnovo', 'spese_trasporto', 'fornitura', 'prezzo_bloccato',
   'prezzo_caffe', 'ordine_minimo_kg', 'penale_ordine', 'assistenza_inclusa', 'numero_interventi',
   'costo_uscita', 'esclusiva', 'penale_esclusiva', 'pagamento', 'tags', 'note', 'attivo',
-  'esito_contratto', 'feedback_chiusura',
+  'esito_contratto', 'feedback_chiusura', 'consumi',
 ];
 
 export async function updateCliente(user, id, payload) {
@@ -127,6 +170,13 @@ function kg90For(c, ordini, now) {
   return kg90;
 }
 
+/** kg negli ultimi 90 giorni: dal consumo manuale se presente, altrimenti dagli ordini. */
+function kg90Any(c, ordini, now) {
+  const cs = statsFromConsumi(c.consumi, now);
+  if (cs) return cs.kg90;
+  return kg90For(c, ordini, now);
+}
+
 /**
  * Reminder mensile: per ogni account manager (commerciale), i clienti attivi
  * sotto l'80% del minimo contrattuale negli ultimi 90 giorni. I clienti gestiti
@@ -146,7 +196,7 @@ export async function runMonthlyClientReminders(options = {}) {
     const mine = (clienti || []).filter((c) => c.account_manager === comm && Number(c.ordine_minimo_kg) > 0);
     const sotto = [];
     for (const c of mine) {
-      const kg90 = kg90For(c, ordini || [], now);
+      const kg90 = kg90Any(c, ordini || [], now);
       if (kg90 / 3 < Number(c.ordine_minimo_kg) * 0.8) sotto.push({ ...c, kg90 });
     }
     if (!sotto.length) {

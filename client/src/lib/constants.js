@@ -129,14 +129,20 @@ export const ACTIVITY_TIPI = ['chiamata', 'whatsapp', 'instagram', 'email', 'mee
 
 // ─── Eventi ───
 export const EVENTO_TIPI = ['Fiera', 'Take over', 'Catering estero'];
+// Funnel di avanzamento (il pulsante "→" segue quest'ordine e si ferma su "eseguita").
 export const EVENTO_STATUS = ['contattato', 'trattativa', 'firmato', 'organizzazione', 'eseguita'];
+// Colonne mostrate in kanban: il funnel + la colonna terminale K.O. (come i lead).
+export const EVENTO_COLUMNS = [...EVENTO_STATUS, 'ko'];
 export const EVENTO_STATUS_META = {
   contattato: { label: 'Contattato', dot: 'bg-blue-500', badge: 'bg-blue-100 text-blue-800' },
   trattativa: { label: 'Trattativa', dot: 'bg-amber-500', badge: 'bg-amber-100 text-amber-800' },
   firmato: { label: 'Firmato', dot: 'bg-violet-500', badge: 'bg-violet-100 text-violet-800' },
   organizzazione: { label: 'Organizzazione', dot: 'bg-cyan-500', badge: 'bg-cyan-100 text-cyan-800' },
   eseguita: { label: 'Evento eseguito', dot: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-800' },
+  ko: { label: 'K.O.', dot: 'bg-rose-500', badge: 'bg-rose-100 text-rose-700' },
 };
+// Motivi di K.O. di un evento (con testo libero ammesso).
+export const MOTIVI_KO = ['Budget assente', 'Data non disponibile', 'Scelto un concorrente', 'Evento annullato', 'Prezzo troppo alto', 'Non interessato', 'Altro'];
 export const PERMESSI_STATUS = ['da_chiedere', 'richiesti', 'inviati'];
 export const PERMESSI_META = {
   da_chiedere: { label: 'Da chiedere', badge: 'bg-rose-100 text-rose-700' },

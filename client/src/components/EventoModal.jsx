@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { COMMERCIALI, EVENTO_TIPI, EVENTO_STATUS, EVENTO_STATUS_META, PERMESSI_STATUS, PERMESSI_META } from '../lib/constants.js';
+import { COMMERCIALI, EVENTO_TIPI, EVENTO_COLUMNS, EVENTO_STATUS_META, PERMESSI_STATUS, PERMESSI_META, MOTIVI_KO } from '../lib/constants.js';
 import { api } from '../lib/api.js';
 import EventoTimeline from './EventoTimeline.jsx';
 
 const d10 = (s) => (s ? String(s).slice(0, 10) : '');
 
-const TEXT = ['richiesta', 'tipologia_fiera', 'contatti', 'citta', 'note', 'prossima_azione', 'orari_evento', 'pause_quando', 'catering_note', 'baristi', 'referente_nome', 'referente_numero', 'referente_mail', 'note_organizzazione'];
+const TEXT = ['richiesta', 'tipologia_fiera', 'contatti', 'citta', 'note', 'motivo_ko', 'prossima_azione', 'orari_evento', 'pause_quando', 'catering_note', 'baristi', 'referente_nome', 'referente_numero', 'referente_mail', 'note_organizzazione'];
 const DATE = ['prossima_fiera_data', 'data_prossimo_followup', 'data_evento', 'data_allestimento', 'data_smontaggio'];
 const NUM = ['persone_previste'];
 const BOOL = ['pause', 'acqua_fornita', 'energia_comunicata', 'spazio_comunicato', 'scia_comunicata', 'latte', 'avena', 'catering', 'attivo'];
@@ -107,7 +107,7 @@ export default function EventoModal({ evento, onClose, onSaved, onDeleted }) {
             <div>
               <label className={label}>Status</label>
               <select className={field} value={form.status} onChange={(e) => set('status', e.target.value)}>
-                {EVENTO_STATUS.map((s) => (<option key={s} value={s}>{EVENTO_STATUS_META[s].label}</option>))}
+                {EVENTO_COLUMNS.map((s) => (<option key={s} value={s}>{EVENTO_STATUS_META[s].label}</option>))}
               </select>
             </div>
             <div>
@@ -117,6 +117,13 @@ export default function EventoModal({ evento, onClose, onSaved, onDeleted }) {
                 {COMMERCIALI.map((c) => (<option key={c} value={c}>{c}</option>))}
               </select>
             </div>
+            {form.status === 'ko' && (
+              <div className="sm:col-span-2">
+                <label className={label}>Motivo K.O.</label>
+                <input className={field} list="motivi-ko-evento" value={form.motivo_ko} onChange={(e) => set('motivo_ko', e.target.value)} placeholder="Perché è saltato?" />
+                <datalist id="motivi-ko-evento">{MOTIVI_KO.map((m) => (<option key={m} value={m} />))}</datalist>
+              </div>
+            )}
             <div><label className={label}>Prossima azione</label><input className={field} value={form.prossima_azione} onChange={(e) => set('prossima_azione', e.target.value)} placeholder="Es. inviare preventivo, richiamare…" /></div>
             <div><label className={label}>Data prossimo follow-up <span className="text-slate-400">(va in agenda)</span></label><input type="date" className={field} value={form.data_prossimo_followup} onChange={(e) => set('data_prossimo_followup', e.target.value)} /></div>
             <div className="sm:col-span-2"><label className={label}>Prossima edizione / evento uguale <span className="text-slate-400">(per riproporre)</span></label><input type="date" className={field} value={form.prossima_fiera_data} onChange={(e) => set('prossima_fiera_data', e.target.value)} /></div>
@@ -183,7 +190,7 @@ export default function EventoModal({ evento, onClose, onSaved, onDeleted }) {
             <button onClick={remove} disabled={deleting || saving} className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60">{deleting ? 'Eliminazione…' : 'Elimina'}</button>
           ) : <span />}
           <div className="flex gap-2">
-            {isEdit && form.status === 'eseguita' && form.attivo !== false && (
+            {isEdit && (form.status === 'eseguita' || form.status === 'ko') && form.attivo !== false && (
               <button onClick={() => save({ attivo: false })} disabled={saving} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">Archivia (storico)</button>
             )}
             <button onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Annulla</button>

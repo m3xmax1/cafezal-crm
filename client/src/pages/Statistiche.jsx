@@ -10,7 +10,7 @@ import {
   followupStatus,
   fmtEuro,
   daysSince,
-  EVENTO_STATUS,
+  EVENTO_COLUMNS,
   EVENTO_STATUS_META,
 } from '../lib/constants.js';
 import Layout from '../components/Layout.jsx';
@@ -108,7 +108,7 @@ export default function Statistiche() {
 
   const ev = useMemo(() => {
     const attivi = eventi.filter((e) => e.attivo !== false);
-    const byStatus = Object.fromEntries(EVENTO_STATUS.map((s) => [s, 0]));
+    const byStatus = Object.fromEntries(EVENTO_COLUMNS.map((s) => [s, 0]));
     for (const e of attivi) if (e.status in byStatus) byStatus[e.status] += 1;
     const byTip = {};
     for (const e of attivi) { const t = e.tipologia_fiera || '—'; byTip[t] = (byTip[t] || 0) + 1; }
@@ -455,8 +455,8 @@ export default function Statistiche() {
                 <div>
                   <h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Per status</h4>
                   <div className="space-y-1.5">
-                    {EVENTO_STATUS.map((s) => (
-                      <Bar key={s} label={EVENTO_STATUS_META[s].label} value={ev.byStatus[s]} max={Math.max(1, ...EVENTO_STATUS.map((x) => ev.byStatus[x]))} color="bg-cyan-500" />
+                    {EVENTO_COLUMNS.map((s) => (
+                      <Bar key={s} label={EVENTO_STATUS_META[s].label} value={ev.byStatus[s]} max={Math.max(1, ...EVENTO_COLUMNS.map((x) => ev.byStatus[x]))} color={s === 'ko' ? 'bg-rose-500' : 'bg-cyan-500'} />
                     ))}
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
@@ -21,9 +21,9 @@ export default function NotificationBell() {
   const isSales = !store && (!!commerciale || isAdmin) && !isTorrefazione;
   const isRoastery = isTorrefazione || isAdmin;
 
-  useEffect(() => {
+  const load = useCallback((force = false) => {
     if (store) return;
-    if (_cache && Date.now() - _cacheAt < 60000) { setD(_cache); return; }
+    if (!force && _cache && Date.now() - _cacheAt < 60000) { setD(_cache); return; }
     const tasks = [];
     if (isSales || isAdmin) {
       tasks.push(
@@ -39,8 +39,17 @@ export default function NotificationBell() {
       _cacheAt = Date.now();
       setD(merged);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [store, isSales, isAdmin, isRoastery]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Rinfresca (bypassando la cache) ad ogni mutazione dei dati, così i toggle
+  // tipo "permessi inviati" spariscono subito senza aspettare i 60s di cache.
+  useEffect(() => {
+    const onChange = () => load(true);
+    window.addEventListener('cafezal:data-changed', onChange);
+    return () => window.removeEventListener('cafezal:data-changed', onChange);
+  }, [load]);
 
   useEffect(() => {
     const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
@@ -88,7 +97,7 @@ export default function NotificationBell() {
   return (
     <div className="relative" ref={ref}>
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => { if (!open) load(true); setOpen((v) => !v); }}
         title="Notifiche"
         aria-label="Notifiche"
         className="relative grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"

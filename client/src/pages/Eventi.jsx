@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { EVENTO_STATUS, EVENTO_STATUS_META, PERMESSI_META } from '../lib/constants.js';
+import { EVENTO_STATUS, EVENTO_COLUMNS, EVENTO_STATUS_META, PERMESSI_META } from '../lib/constants.js';
 import { api } from '../lib/api.js';
 import Layout from '../components/Layout.jsx';
 import EventoModal from '../components/EventoModal.jsx';
@@ -10,7 +10,7 @@ const nextStatus = (s) => {
   return i >= 0 && i < EVENTO_STATUS.length - 1 ? EVENTO_STATUS[i + 1] : null;
 };
 
-function EventoCard({ e, onClick, onAdvance }) {
+function EventoCard({ e, onClick, onAdvance, onKo }) {
   const nxt = nextStatus(e.status);
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-card">
@@ -22,16 +22,22 @@ function EventoCard({ e, onClick, onAdvance }) {
           {e.commerciale_assegnato && <span> · {e.commerciale_assegnato}</span>}
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          {e.status === 'ko' && e.motivo_ko && <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-medium text-rose-700">✕ {e.motivo_ko}</span>}
           {e.data_evento && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">📅 {fmtDate(e.data_evento)}</span>}
           {e.data_prossimo_followup && <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700" title={e.prossima_azione || ''}>⏰ {fmtDate(e.data_prossimo_followup)}</span>}
           {e.permessi_status && <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${PERMESSI_META[e.permessi_status]?.badge}`}>Permessi: {PERMESSI_META[e.permessi_status]?.label}</span>}
           {e.prossima_fiera_data && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">🔁 {fmtDate(e.prossima_fiera_data)}</span>}
         </div>
       </div>
-      {nxt && (
-        <button onClick={() => onAdvance(e, nxt)} className="mt-2 rounded-md bg-blue-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-blue-700">
-          → {EVENTO_STATUS_META[nxt].label}
-        </button>
+      {(nxt || onKo) && e.status !== 'ko' && (
+        <div className="mt-2 flex items-center gap-2">
+          {nxt && (
+            <button onClick={() => onAdvance(e, nxt)} className="rounded-md bg-blue-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-blue-700">
+              → {EVENTO_STATUS_META[nxt].label}
+            </button>
+          )}
+          {onKo && <button onClick={() => onKo(e)} className="rounded-md px-2 py-1 text-[11px] font-semibold text-rose-600 hover:bg-rose-50">K.O.</button>}
+        </div>
       )}
     </div>
   );
@@ -54,7 +60,7 @@ export default function Eventi() {
   const attivi = useMemo(() => items.filter((e) => e.attivo !== false), [items]);
   const storico = useMemo(() => items.filter((e) => e.attivo === false), [items]);
   const byStatus = useMemo(() => {
-    const g = Object.fromEntries(EVENTO_STATUS.map((s) => [s, []]));
+    const g = Object.fromEntries(EVENTO_COLUMNS.map((s) => [s, []]));
     for (const e of attivi) if (g[e.status]) g[e.status].push(e);
     return g;
   }, [attivi]);
@@ -73,6 +79,10 @@ export default function Eventi() {
   function onDeleted(id) { setItems((cur) => cur.filter((x) => x.id !== id)); setSel(null); }
   async function advance(e, nxt) {
     const up = await api.eventi.update(e.id, { status: nxt });
+    merge(up);
+  }
+  async function koEvento(e) {
+    const up = await api.eventi.update(e.id, { status: 'ko' });
     merge(up);
   }
 
@@ -107,15 +117,15 @@ export default function Eventi() {
         <div className="grid place-items-center py-20 text-slate-400">Caricamento…</div>
       ) : view === 'pipeline' ? (
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {EVENTO_STATUS.map((s) => (
+          {EVENTO_COLUMNS.map((s) => (
             <div key={s} className="flex w-72 shrink-0 flex-col">
               <div className="mb-2 flex items-center gap-2 px-1">
                 <span className={`h-2.5 w-2.5 rounded-full ${EVENTO_STATUS_META[s].dot}`} />
                 <h3 className="text-[13px] font-semibold uppercase tracking-wide text-slate-700">{EVENTO_STATUS_META[s].label}</h3>
                 <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">{byStatus[s].length}</span>
               </div>
-              <div className="flex min-h-[120px] flex-1 flex-col gap-2 rounded-2xl border border-slate-200/70 bg-slate-100/50 p-2">
-                {byStatus[s].map((e) => (<EventoCard key={e.id} e={e} onClick={() => setSel(e)} onAdvance={advance} />))}
+              <div className={`flex min-h-[120px] flex-1 flex-col gap-2 rounded-2xl border p-2 ${s === 'ko' ? 'border-rose-200/70 bg-rose-50/50' : 'border-slate-200/70 bg-slate-100/50'}`}>
+                {byStatus[s].map((e) => (<EventoCard key={e.id} e={e} onClick={() => setSel(e)} onAdvance={advance} onKo={koEvento} />))}
                 {byStatus[s].length === 0 && <div className="grid flex-1 place-items-center py-6 text-xs text-slate-400">—</div>}
               </div>
             </div>

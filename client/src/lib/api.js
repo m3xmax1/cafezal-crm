@@ -8,6 +8,15 @@ async function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+// Any successful mutation broadcasts a global event so live widgets (es. la
+// campanella delle notifiche) possono invalidare la cache e rinfrescarsi subito.
+function notifyDataChanged(options) {
+  const method = (options.method || 'GET').toUpperCase();
+  if (method !== 'GET' && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('cafezal:data-changed'));
+  }
+}
+
 async function request(path, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
@@ -16,11 +25,15 @@ async function request(path, options = {}) {
   };
   const res = await fetch(`${BASE}/api${path}`, { ...options, headers });
 
-  if (res.status === 204) return null;
+  if (res.status === 204) {
+    notifyDataChanged(options);
+    return null;
+  }
 
   const text = await res.text();
   const body = text ? JSON.parse(text) : null;
   if (!res.ok) throw new Error(body?.error || `Request failed (${res.status})`);
+  notifyDataChanged(options);
   return body;
 }
 
