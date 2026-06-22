@@ -7,9 +7,10 @@ function httpError(message, status) {
   return e;
 }
 
-// Eventi è una sezione commerciale: store e torrefazione non la vedono.
+// Eventi è una sezione commerciale. Default-deny: solo admin o un commerciale
+// mappato (store, torrefazione non-admin e account senza ruolo sono esclusi).
 function assertAccess(user) {
-  if (user.store || (user.isTorrefazione && !user.isAdmin)) throw httpError('Non autorizzato', 403);
+  if (!user.isAdmin && !user.commerciale) throw httpError('Non autorizzato', 403);
 }
 
 const FIELDS = [

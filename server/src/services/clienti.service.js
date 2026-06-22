@@ -9,9 +9,11 @@ function httpError(message, status) {
   return e;
 }
 
-// Clienti attivi are a sales/admin concern — stores and the roastery don't see them.
+// Clienti attivi are a sales/admin concern. Default-deny: solo admin o un
+// commerciale mappato. Store, torrefazione (non-admin) e account senza ruolo
+// (es. da signup pubblico) sono esclusi.
 function assertAccess(user) {
-  if (user.store || (user.isTorrefazione && !user.isAdmin)) throw httpError('Non autorizzato', 403);
+  if (!user.isAdmin && !user.commerciale) throw httpError('Non autorizzato', 403);
 }
 
 const norm = (s) => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
