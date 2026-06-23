@@ -12,7 +12,7 @@ function assertAccess(user) {
 }
 
 const CAFFE_FIELDS = ['nome', 'provenienza', 'tipologia', 'processo', 'costo', 'produttore', 'note', 'attivo'];
-const DIFLUID_FIELDS = ['data', 'prossima_data', 'water_activity', 'moisture', 'true_density', 'mesh_size', 'note'];
+const DIFLUID_FIELDS = ['data', 'prossima_data', 'water_activity', 'moisture', 'true_density', 'mesh_size', 'roast_level', 'n_lotto', 'note'];
 const CUPPING_FIELDS = ['data', 'fragranza', 'flavor', 'aftertaste', 'acidity', 'body', 'balance', 'uniformity', 'clean_cup', 'sweetness', 'overall', 'difetti', 'punteggio', 'assaggiatore', 'note'];
 
 const SELECT = '*, caffe_difluid(*), caffe_cupping(*)';
@@ -64,6 +64,16 @@ export async function addDifluid(user, caffeId, payload) {
   return data;
 }
 
+export async function updateDifluid(user, id, payload) {
+  assertAccess(user);
+  const row = {};
+  for (const k of DIFLUID_FIELDS) if (payload[k] !== undefined) row[k] = payload[k] === '' ? null : payload[k];
+  if (Object.keys(row).length === 0) return null;
+  const { data, error } = await db.from('caffe_difluid').update(row).eq('id', id).select().single();
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteDifluid(user, id) {
   assertAccess(user);
   const { error } = await db.from('caffe_difluid').delete().eq('id', id);
@@ -77,6 +87,16 @@ export async function addCupping(user, caffeId, payload) {
   const row = { caffe_id: Number(caffeId), created_by: user.commerciale || user.email };
   for (const k of CUPPING_FIELDS) if (payload[k] !== undefined) row[k] = payload[k] === '' ? null : payload[k];
   const { data, error } = await db.from('caffe_cupping').insert(row).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateCupping(user, id, payload) {
+  assertAccess(user);
+  const row = {};
+  for (const k of CUPPING_FIELDS) if (payload[k] !== undefined) row[k] = payload[k] === '' ? null : payload[k];
+  if (Object.keys(row).length === 0) return null;
+  const { data, error } = await db.from('caffe_cupping').update(row).eq('id', id).select().single();
   if (error) throw error;
   return data;
 }

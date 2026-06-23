@@ -20,12 +20,18 @@ export async function remove(req, res, next) {
 export async function addDifluid(req, res, next) {
   try { res.status(201).json(await service.addDifluid(req.user, req.params.id, req.body || {})); } catch (e) { next(e); }
 }
+export async function updateDifluid(req, res, next) {
+  try { res.json(await service.updateDifluid(req.user, req.params.did, req.body || {})); } catch (e) { next(e); }
+}
 export async function removeDifluid(req, res, next) {
   try { await service.deleteDifluid(req.user, req.params.did); res.status(204).end(); } catch (e) { next(e); }
 }
 
 export async function addCupping(req, res, next) {
   try { res.status(201).json(await service.addCupping(req.user, req.params.id, req.body || {})); } catch (e) { next(e); }
+}
+export async function updateCupping(req, res, next) {
+  try { res.json(await service.updateCupping(req.user, req.params.cid, req.body || {})); } catch (e) { next(e); }
 }
 export async function removeCupping(req, res, next) {
   try { await service.deleteCupping(req.user, req.params.cid); res.status(204).end(); } catch (e) { next(e); }

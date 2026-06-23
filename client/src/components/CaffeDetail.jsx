@@ -25,39 +25,60 @@ export default function CaffeDetail({ caffe, onBack, onEdit, onChanged }) {
   const difluid = useMemo(() => [...(caffe.caffe_difluid || [])].sort((a, b) => (b.data || '').localeCompare(a.data || '')), [caffe]);
   const cupping = useMemo(() => [...(caffe.caffe_cupping || [])].sort((a, b) => (b.data || '').localeCompare(a.data || '')), [caffe]);
 
-  // ── form DiFluid ──
-  const [df, setDf] = useState({ data: todayISO(), prossima_data: '', water_activity: '', moisture: '', true_density: '', mesh_size: '', note: '' });
+  // ── form DiFluid (nuovo + modifica) ──
+  const emptyDf = () => ({ data: todayISO(), prossima_data: '', water_activity: '', moisture: '', true_density: '', mesh_size: '', roast_level: '', n_lotto: '', note: '' });
+  const [df, setDf] = useState(emptyDf);
+  const [editDfId, setEditDfId] = useState(null);
   const setDfK = (k, v) => setDf((s) => ({ ...s, [k]: v }));
   const [busyDf, setBusyDf] = useState(false);
-  async function addDifluid() {
+  function startEditDf(a) {
+    setEditDfId(a.id);
+    setDf({
+      data: (a.data || '').slice(0, 10), prossima_data: (a.prossima_data || '').slice(0, 10),
+      water_activity: a.water_activity ?? '', moisture: a.moisture ?? '', true_density: a.true_density ?? '',
+      mesh_size: a.mesh_size ?? '', roast_level: a.roast_level ?? '', n_lotto: a.n_lotto ?? '', note: a.note ?? '',
+    });
+  }
+  const cancelEditDf = () => { setEditDfId(null); setDf(emptyDf()); };
+  async function saveDifluid() {
     setBusyDf(true); setError('');
     try {
       const p = { ...df };
       ['water_activity', 'moisture', 'true_density'].forEach((k) => { p[k] = p[k] === '' ? null : Number(p[k]); });
-      await api.caffeVerde.addDifluid(caffe.id, p);
-      setDf({ data: todayISO(), prossima_data: '', water_activity: '', moisture: '', true_density: '', mesh_size: '', note: '' });
+      if (editDfId) await api.caffeVerde.updateDifluid(editDfId, p);
+      else await api.caffeVerde.addDifluid(caffe.id, p);
+      setDf(emptyDf()); setEditDfId(null);
       onChanged();
     } catch (e) { setError(e.message); } finally { setBusyDf(false); }
   }
-  async function delDifluid(id) { if (!window.confirm('Eliminare questa analisi?')) return; try { await api.caffeVerde.removeDifluid(id); onChanged(); } catch (e) { setError(e.message); } }
+  async function delDifluid(id) { if (!window.confirm('Eliminare questa analisi?')) return; try { await api.caffeVerde.removeDifluid(id); if (editDfId === id) cancelEditDf(); onChanged(); } catch (e) { setError(e.message); } }
 
   // ── form cupping ──
   const emptyCup = () => { const f = { data: todayISO(), assaggiatore: '', difetti: 0, note: '' }; SCA.forEach((a) => { f[a.k] = 7.5; }); return f; };
   const [cup, setCup] = useState(emptyCup);
+  const [editCupId, setEditCupId] = useState(null);
   const setCupK = (k, v) => setCup((s) => ({ ...s, [k]: v }));
   const cupTotal = useMemo(() => SCA.reduce((s, a) => s + (Number(cup[a.k]) || 0), 0) - (Number(cup.difetti) || 0), [cup]);
   const [busyCup, setBusyCup] = useState(false);
-  async function addCupping() {
+  function startEditCup(c) {
+    setEditCupId(c.id);
+    const f = { data: (c.data || '').slice(0, 10), assaggiatore: c.assaggiatore ?? '', difetti: c.difetti ?? 0, note: c.note ?? '' };
+    SCA.forEach((a) => { f[a.k] = c[a.k] ?? ''; });
+    setCup(f);
+  }
+  const cancelEditCup = () => { setEditCupId(null); setCup(emptyCup()); };
+  async function saveCupping() {
     setBusyCup(true); setError('');
     try {
       const p = { data: cup.data || null, assaggiatore: cup.assaggiatore || null, note: cup.note || null, difetti: Number(cup.difetti) || 0, punteggio: Math.round(cupTotal * 100) / 100 };
       SCA.forEach((a) => { p[a.k] = cup[a.k] === '' ? null : Number(cup[a.k]); });
-      await api.caffeVerde.addCupping(caffe.id, p);
-      setCup(emptyCup());
+      if (editCupId) await api.caffeVerde.updateCupping(editCupId, p);
+      else await api.caffeVerde.addCupping(caffe.id, p);
+      setCup(emptyCup()); setEditCupId(null);
       onChanged();
     } catch (e) { setError(e.message); } finally { setBusyCup(false); }
   }
-  async function delCupping(id) { if (!window.confirm('Eliminare questo cupping?')) return; try { await api.caffeVerde.removeCupping(id); onChanged(); } catch (e) { setError(e.message); } }
+  async function delCupping(id) { if (!window.confirm('Eliminare questo cupping?')) return; try { await api.caffeVerde.removeCupping(id); if (editCupId === id) cancelEditCup(); onChanged(); } catch (e) { setError(e.message); } }
 
   const radarSeries = cupping.slice(0, 4).map((c, i) => ({ name: fmtDate(c.data), color: SERIES_COLORS[i % SERIES_COLORS.length], values: c }));
 
@@ -87,7 +108,8 @@ export default function CaffeDetail({ caffe, onBack, onEdit, onChanged }) {
         {/* ── DiFluid ── */}
         <div className={card}>
           <h3 className={section}>📐 Analisi DiFluid</h3>
-          <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div className={`mb-3 rounded-lg border p-3 ${editDfId ? 'border-emerald-300 bg-emerald-50/60' : 'border-slate-200 bg-slate-50'}`}>
+            {editDfId && <div className="mb-2 text-[11px] font-semibold text-emerald-700">✎ Modifica rilevazione</div>}
             <div className="grid grid-cols-2 gap-2">
               <div><label className={lbl}>Data rilevazione</label><input type="date" className={field} value={df.data} onChange={(e) => setDfK('data', e.target.value)} /></div>
               <div><label className={lbl}>Prossima (in agenda)</label><input type="date" className={field} value={df.prossima_data} onChange={(e) => setDfK('prossima_data', e.target.value)} /></div>
@@ -95,25 +117,35 @@ export default function CaffeDetail({ caffe, onBack, onEdit, onChanged }) {
               <div><label className={lbl}>Umidità %</label><input type="number" step="0.1" className={field} value={df.moisture} onChange={(e) => setDfK('moisture', e.target.value)} placeholder="es. 10,8" /></div>
               <div><label className={lbl}>Densità reale (g/L)</label><input type="number" step="0.1" className={field} value={df.true_density} onChange={(e) => setDfK('true_density', e.target.value)} placeholder="es. 720" /></div>
               <div><label className={lbl}>Setaccio (mesh)</label><input className={field} value={df.mesh_size} onChange={(e) => setDfK('mesh_size', e.target.value)} placeholder="es. 15/16" /></div>
+              <div><label className={lbl}>Roast level</label><input className={field} value={df.roast_level} onChange={(e) => setDfK('roast_level', e.target.value)} placeholder="es. Medio / Agtron 58" /></div>
+              <div><label className={lbl}>N. lotto</label><input className={field} value={df.n_lotto} onChange={(e) => setDfK('n_lotto', e.target.value)} /></div>
             </div>
-            <button onClick={addDifluid} disabled={busyDf} className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">{busyDf ? '…' : '+ Aggiungi rilevazione'}</button>
+            <div className="mt-2 flex gap-2">
+              <button onClick={saveDifluid} disabled={busyDf} className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">{busyDf ? '…' : editDfId ? 'Salva modifiche' : '+ Aggiungi rilevazione'}</button>
+              {editDfId && <button onClick={cancelEditDf} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">Annulla</button>}
+            </div>
           </div>
           {difluid.length === 0 ? (
             <p className="text-sm text-slate-400">Nessuna analisi DiFluid.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
-                <thead><tr className="text-left text-[10px] uppercase tracking-wide text-slate-400"><th className="py-1">Data</th><th className="py-1 text-right">aw</th><th className="py-1 text-right">Umid.%</th><th className="py-1 text-right">Dens.</th><th className="py-1">Mesh</th><th className="py-1">Prossima</th><th /></tr></thead>
+                <thead><tr className="text-left text-[10px] uppercase tracking-wide text-slate-400"><th className="py-1">Data</th><th className="py-1 text-right">aw</th><th className="py-1 text-right">Umid.%</th><th className="py-1 text-right">Dens.</th><th className="py-1">Mesh</th><th className="py-1">Roast</th><th className="py-1">Lotto</th><th className="py-1">Prossima</th><th /></tr></thead>
                 <tbody>
                   {difluid.map((a) => (
-                    <tr key={a.id} className="border-t border-slate-50">
+                    <tr key={a.id} className={`border-t border-slate-50 ${editDfId === a.id ? 'bg-emerald-50' : ''}`}>
                       <td className="py-1.5 font-medium text-slate-700">{fmtDate(a.data)}</td>
                       <td className="py-1.5 text-right">{num(a.water_activity)}</td>
                       <td className="py-1.5 text-right">{num(a.moisture)}</td>
                       <td className="py-1.5 text-right">{num(a.true_density)}</td>
                       <td className="py-1.5">{a.mesh_size || '—'}</td>
+                      <td className="py-1.5">{a.roast_level || '—'}</td>
+                      <td className="py-1.5">{a.n_lotto || '—'}</td>
                       <td className="py-1.5 text-slate-500">{a.prossima_data ? `⏰ ${fmtDate(a.prossima_data)}` : '—'}</td>
-                      <td className="py-1.5 text-right"><button onClick={() => delDifluid(a.id)} className="text-slate-300 hover:text-red-500">✕</button></td>
+                      <td className="py-1.5 text-right whitespace-nowrap">
+                        <button onClick={() => startEditDf(a)} className="text-slate-400 hover:text-emerald-600" title="Modifica">✎</button>
+                        <button onClick={() => delDifluid(a.id)} className="ml-2 text-slate-300 hover:text-red-500" title="Elimina">✕</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -141,8 +173,8 @@ export default function CaffeDetail({ caffe, onBack, onEdit, onChanged }) {
       </div>
 
       {/* ── Cupping: form + storico ── */}
-      <div className={`${card} mt-4`}>
-        <h3 className={section}>☕ Cupping SCA — nuovo</h3>
+      <div className={`${card} mt-4 ${editCupId ? 'ring-1 ring-emerald-300' : ''}`}>
+        <h3 className={section}>☕ Cupping SCA — {editCupId ? 'modifica' : 'nuovo'}</h3>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
           {SCA.map((a) => (
             <div key={a.k}><label className={lbl}>{a.label}</label><input type="number" min="6" max="10" step="0.25" className={field} value={cup[a.k]} onChange={(e) => setCupK(a.k, e.target.value)} /></div>
@@ -153,7 +185,10 @@ export default function CaffeDetail({ caffe, onBack, onEdit, onChanged }) {
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <div className="text-sm text-slate-600">Punteggio totale: <strong className={cupTotal >= 80 ? 'text-emerald-600' : 'text-slate-800'}>{cupTotal.toLocaleString('it-IT', { maximumFractionDigits: 2 })}</strong> / 100</div>
-          <button onClick={addCupping} disabled={busyCup} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">{busyCup ? '…' : '+ Salva cupping'}</button>
+          <div className="flex gap-2">
+            {editCupId && <button onClick={cancelEditCup} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">Annulla</button>}
+            <button onClick={saveCupping} disabled={busyCup} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">{busyCup ? '…' : editCupId ? 'Salva modifiche' : '+ Salva cupping'}</button>
+          </div>
         </div>
 
         {cupping.length > 0 && (
@@ -162,12 +197,15 @@ export default function CaffeDetail({ caffe, onBack, onEdit, onChanged }) {
               <thead><tr className="text-left text-[10px] uppercase tracking-wide text-slate-400"><th className="py-1">Data</th><th className="py-1 text-right">Punteggio</th><th className="py-1">Assaggiatore</th><th className="py-1">Note</th><th /></tr></thead>
               <tbody>
                 {cupping.map((c) => (
-                  <tr key={c.id} className="border-t border-slate-50">
+                  <tr key={c.id} className={`border-t border-slate-50 ${editCupId === c.id ? 'bg-emerald-50' : ''}`}>
                     <td className="py-1.5 font-medium text-slate-700">{fmtDate(c.data)}</td>
                     <td className="py-1.5 text-right font-semibold text-slate-800">{c.punteggio != null ? Number(c.punteggio).toLocaleString('it-IT', { maximumFractionDigits: 2 }) : '—'}</td>
                     <td className="py-1.5 text-slate-500">{c.assaggiatore || '—'}</td>
                     <td className="py-1.5 text-slate-500">{c.note || '—'}</td>
-                    <td className="py-1.5 text-right"><button onClick={() => delCupping(c.id)} className="text-slate-300 hover:text-red-500">✕</button></td>
+                    <td className="py-1.5 text-right whitespace-nowrap">
+                      <button onClick={() => startEditCup(c)} className="text-slate-400 hover:text-emerald-600" title="Modifica">✎</button>
+                      <button onClick={() => delCupping(c.id)} className="ml-2 text-slate-300 hover:text-red-500" title="Elimina">✕</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

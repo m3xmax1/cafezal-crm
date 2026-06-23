@@ -104,8 +104,10 @@ export const api = {
     update: (id, p) => request(`/caffe-verde/${id}`, { method: 'PATCH', body: JSON.stringify(p) }),
     remove: (id) => request(`/caffe-verde/${id}`, { method: 'DELETE' }),
     addDifluid: (id, p) => request(`/caffe-verde/${id}/difluid`, { method: 'POST', body: JSON.stringify(p) }),
+    updateDifluid: (did, p) => request(`/caffe-verde/difluid/${did}`, { method: 'PATCH', body: JSON.stringify(p) }),
     removeDifluid: (did) => request(`/caffe-verde/difluid/${did}`, { method: 'DELETE' }),
     addCupping: (id, p) => request(`/caffe-verde/${id}/cupping`, { method: 'POST', body: JSON.stringify(p) }),
+    updateCupping: (cid, p) => request(`/caffe-verde/cupping/${cid}`, { method: 'PATCH', body: JSON.stringify(p) }),
     removeCupping: (cid) => request(`/caffe-verde/cupping/${cid}`, { method: 'DELETE' }),
   },
 

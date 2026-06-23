@@ -12,10 +12,12 @@ router.delete('/:id', ctrl.remove);
 
 // Analisi DiFluid
 router.post('/:id/difluid', ctrl.addDifluid);
+router.patch('/difluid/:did', ctrl.updateDifluid);
 router.delete('/difluid/:did', ctrl.removeDifluid);
 
 // Analisi cupping (SCA)
 router.post('/:id/cupping', ctrl.addCupping);
+router.patch('/cupping/:cid', ctrl.updateCupping);
 router.delete('/cupping/:cid', ctrl.removeCupping);
 
 export default router;
