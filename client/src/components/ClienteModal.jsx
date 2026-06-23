@@ -24,7 +24,10 @@ function addMonthsISO(iso, months) {
 const kg = (v) => (v == null ? '—' : `${Number(v).toLocaleString('it-IT', { maximumFractionDigits: 1 })} kg`);
 const eur = (v) => (v == null ? '—' : `€ ${Number(v).toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
 
-const TEXT = ['cliente', 'rag_sociale', 'piva', 'macchinari', 'rinnovo', 'spese_trasporto', 'prezzo_caffe', 'penale_ordine', 'numero_interventi', 'costo_uscita', 'pagamento', 'note'];
+const TEXT = ['cliente', 'rag_sociale', 'piva', 'macchinari', 'rinnovo', 'spese_trasporto', 'prezzo_caffe', 'penale_ordine', 'numero_interventi', 'costo_uscita', 'pagamento', 'note',
+  'email', 'telefono', 'pec', 'sdi', 'indirizzo_sede_legale', 'indirizzo_spedizione'];
+// Dati obbligatori per fatturare un cliente attivo (label per i messaggi d'errore).
+const FATT_REQUIRED = { rag_sociale: 'Ragione sociale', cliente: 'Alias', piva: 'P.IVA/C.F.', email: 'Email', telefono: 'Telefono', pec: 'PEC', sdi: 'SDI', indirizzo_sede_legale: 'Indirizzo sede legale', indirizzo_spedizione: 'Indirizzo spedizione' };
 const NUM = ['valore_attrezzatura', 'deposito', 'rata_noleggio', 'durata_mesi', 'ordine_minimo_kg', 'penale_esclusiva'];
 const DATE = ['firma', 'scadenza_contratto'];
 const BOOL = ['comodato', 'fornitura', 'prezzo_bloccato', 'assistenza_inclusa', 'esclusiva', 'attivo'];
@@ -77,8 +80,18 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted, ren
 
   async function save() {
     if (!form.cliente.trim() && !form.rag_sociale.trim()) {
-      setError('Indica almeno il nome cliente o la ragione sociale.');
+      setError('Indica almeno la ragione sociale o l\'alias.');
       return;
+    }
+    // Nuovo cliente attivo (o rinnovo) → dati di fatturazione obbligatori.
+    // Sui clienti già esistenti non blocco le modifiche al volo (li si completa
+    // quando servono: l'emissione ordine richiede comunque i dati fiscali).
+    if (form.attivo && (!isEdit || renew)) {
+      const missing = Object.entries(FATT_REQUIRED).filter(([k]) => !String(form[k] || '').trim()).map(([, v]) => v);
+      if (missing.length) {
+        setError(`Per un nuovo cliente attivo servono i dati di fatturazione. Mancano: ${missing.join(', ')}.`);
+        return;
+      }
     }
     setError('');
     setSaving(true);
@@ -161,9 +174,9 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted, ren
 
           <p className={section}>Anagrafica</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div><label className={label}>Cliente</label><input className={field} value={form.cliente} onChange={(e) => set('cliente', e.target.value)} /></div>
-            <div><label className={label}>Ragione sociale</label><input className={field} value={form.rag_sociale} onChange={(e) => set('rag_sociale', e.target.value)} /></div>
-            <div><label className={label}>P. IVA</label><input className={field} value={form.piva} onChange={(e) => set('piva', e.target.value)} /></div>
+            <div><label className={label}>Ragione sociale</label><input className={field} value={form.rag_sociale} onChange={(e) => set('rag_sociale', e.target.value)} placeholder="Nome legale / fattura" /></div>
+            <div><label className={label}>Alias <span className="text-slate-400">(nome comune)</span></label><input className={field} value={form.cliente} onChange={(e) => set('cliente', e.target.value)} placeholder="Come lo chiamate voi" /></div>
+            <div><label className={label}>P. IVA / C.F.</label><input className={field} value={form.piva} onChange={(e) => set('piva', e.target.value)} /></div>
             <div>
               <label className={label}>Account manager</label>
               <select className={field} value={form.account_manager} onChange={(e) => set('account_manager', e.target.value)}>
@@ -172,6 +185,16 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted, ren
               </select>
             </div>
             <div className="sm:col-span-2"><label className={label}>Tag (separati da virgola)</label><input className={field} value={form.tags} onChange={(e) => set('tags', e.target.value)} placeholder="es. premium, milano, hotel" /></div>
+          </div>
+
+          <p className={section}>Dati di fatturazione <span className="font-normal normal-case text-slate-400">(obbligatori per cliente attivo)</span></p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div><label className={label}>Email</label><input className={field} value={form.email} onChange={(e) => set('email', e.target.value)} /></div>
+            <div><label className={label}>Telefono</label><input className={field} value={form.telefono} onChange={(e) => set('telefono', e.target.value)} /></div>
+            <div><label className={label}>PEC</label><input className={field} value={form.pec} onChange={(e) => set('pec', e.target.value)} /></div>
+            <div><label className={label}>Codice SDI</label><input className={field} value={form.sdi} onChange={(e) => set('sdi', e.target.value)} /></div>
+            <div className="sm:col-span-2"><label className={label}>Indirizzo sede legale</label><input className={field} value={form.indirizzo_sede_legale} onChange={(e) => set('indirizzo_sede_legale', e.target.value)} /></div>
+            <div className="sm:col-span-2"><label className={label}>Indirizzo spedizione</label><input className={field} value={form.indirizzo_spedizione} onChange={(e) => set('indirizzo_spedizione', e.target.value)} /></div>
           </div>
 
           <p className={section}>Consumo mensile (kg)</p>

@@ -12,14 +12,16 @@ import ClientiAttivi from './pages/ClientiAttivi.jsx';
 import StatisticheTorrefazione from './pages/StatisticheTorrefazione.jsx';
 import Eventi from './pages/Eventi.jsx';
 import Pianifica from './pages/Pianifica.jsx';
+import Finance from './pages/Finance.jsx';
 import Profilo from './pages/Profilo.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 
 // Land each role in its own world.
 function RoleHome() {
-  const { store, isTorrefazione, isAdmin } = useAuth();
+  const { store, isTorrefazione, isFinance, isAdmin } = useAuth();
   if (store) return <Navigate to="/ordina" replace />;
+  if (isFinance && !isAdmin) return <Navigate to="/finance" replace />;
   if (isTorrefazione && !isAdmin) return <Navigate to="/ordini" replace />;
   return <Dashboard />;
 }
@@ -81,6 +83,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Pianifica />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/finance"
+        element={
+          <ProtectedRoute>
+            <Finance />
           </ProtectedRoute>
         }
       />

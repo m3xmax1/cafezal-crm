@@ -61,6 +61,9 @@ function OrdineCard({ o, canManage, onPatch, compact, onCorrect }) {
       {o.problema_nota && (
         <div className="mt-1.5 rounded bg-rose-50 px-2 py-1 text-[11px] text-rose-800"><span className="font-semibold">⚠ Problema:</span> {o.problema_nota}</div>
       )}
+      {o.data_consegna_prevista && (
+        <div className="mt-1.5 inline-block rounded bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">📦 Consegna prevista: {fmtDate(o.data_consegna_prevista)}</div>
+      )}
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {canManage && nxt && (
@@ -99,6 +102,9 @@ function OrdineCard({ o, canManage, onPatch, compact, onCorrect }) {
             <div className="mt-2 space-y-1.5">
               <input className="w-full rounded border border-slate-300 px-2 py-1 text-xs" placeholder="DDT" value={ddt} onChange={(e) => setDdt(e.target.value)} onBlur={() => ddt !== (o.ddt || '') && save({ ddt })} />
               <input className="w-full rounded border border-slate-300 px-2 py-1 text-xs" placeholder="Tracking / note" value={tracking} onChange={(e) => setTracking(e.target.value)} onBlur={() => tracking !== (o.tracking || '') && save({ tracking })} />
+              <label className="block text-[11px] text-slate-500">📦 Consegna prevista
+                <input type="date" className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1 text-xs" value={(o.data_consegna_prevista || '').slice(0, 10)} onChange={(e) => save({ data_consegna_prevista: e.target.value || null })} />
+              </label>
               <select value={o.stato} onChange={(e) => save({ stato: e.target.value })} className="w-full rounded border border-slate-300 px-2 py-1 text-xs">
                 {Object.keys(STATO_META).map((s) => (
                   <option key={s} value={s}>{STATO_META[s].label}</option>

@@ -9,11 +9,13 @@ function httpError(message, status) {
   return e;
 }
 
-// Clienti attivi are a sales/admin concern. Default-deny: solo admin o un
-// commerciale mappato. Store, torrefazione (non-admin) e account senza ruolo
-// (es. da signup pubblico) sono esclusi.
+// Scrittura: solo admin o un commerciale mappato (default-deny).
 function assertAccess(user) {
   if (!user.isAdmin && !user.commerciale) throw httpError('Non autorizzato', 403);
+}
+// Lettura: anche la finance (vede clienti + recap per fatturare), sola lettura.
+function assertRead(user) {
+  if (!user.isAdmin && !user.commerciale && !user.isFinance) throw httpError('Non autorizzato', 403);
 }
 
 const norm = (s) => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -59,7 +61,7 @@ function statsFromConsumi(consumi, now) {
 
 /** List active clients, each enriched with consumption stats (manual consumi, else matched orders). */
 export async function listClienti(user) {
-  assertAccess(user);
+  assertRead(user);
   const { data: clienti, error } = await db
     .from('clienti_attivi')
     .select('*')
@@ -121,6 +123,8 @@ const EDITABLE = [
   'prezzo_caffe', 'ordine_minimo_kg', 'penale_ordine', 'assistenza_inclusa', 'numero_interventi',
   'costo_uscita', 'esclusiva', 'penale_esclusiva', 'pagamento', 'tags', 'note', 'attivo',
   'esito_contratto', 'feedback_chiusura', 'consumi',
+  // Dati di fatturazione
+  'email', 'telefono', 'pec', 'sdi', 'indirizzo_sede_legale', 'indirizzo_spedizione',
 ];
 
 export async function updateCliente(user, id, payload) {

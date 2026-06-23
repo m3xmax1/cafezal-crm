@@ -36,6 +36,13 @@ const empty = {
   prossimo_riordino: '',
   note: '',
   data_scadenza: '',
+  // Dati di fatturazione (azienda = alias; richiesti all'ordine / conversione cliente)
+  ragione_sociale: '',
+  piva_cf: '',
+  pec: '',
+  sdi: '',
+  indirizzo_sede_legale: '',
+  indirizzo_spedizione: '',
 };
 
 export default function OpportunityModal({
@@ -78,6 +85,12 @@ export default function OpportunityModal({
         prossimo_riordino: opp.prossimo_riordino || '',
         note: opp.note || '',
         data_scadenza: opp.data_scadenza || '',
+        ragione_sociale: opp.ragione_sociale || '',
+        piva_cf: opp.piva_cf || '',
+        pec: opp.pec || '',
+        sdi: opp.sdi || '',
+        indirizzo_sede_legale: opp.indirizzo_sede_legale || '',
+        indirizzo_spedizione: opp.indirizzo_spedizione || '',
       });
     } else {
       setForm({ ...empty, commerciale_assegnato: defaultCommerciale || '' });
@@ -189,7 +202,7 @@ export default function OpportunityModal({
             <p className={section}>Dati cliente</p>
             <div className="space-y-4">
               <div>
-                <label className={label}>Azienda *</label>
+                <label className={label}>Azienda <span className="font-normal text-slate-400">(alias / nome comune)</span> *</label>
                 <input
                   className={field}
                   value={form.azienda}
@@ -259,6 +272,19 @@ export default function OpportunityModal({
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* ── Dati di fatturazione ── */}
+          <div>
+            <p className={section}>Dati di fatturazione <span className="font-normal normal-case text-slate-400">(richiesti all'ordine / quando diventa cliente)</span></p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div><label className={label}>Ragione sociale</label><input className={field} value={form.ragione_sociale} onChange={(e) => set('ragione_sociale', e.target.value)} placeholder="Nome legale / fattura" /></div>
+              <div><label className={label}>P. IVA / C.F.</label><input className={field} value={form.piva_cf} onChange={(e) => set('piva_cf', e.target.value)} /></div>
+              <div><label className={label}>PEC</label><input className={field} value={form.pec} onChange={(e) => set('pec', e.target.value)} /></div>
+              <div><label className={label}>Codice SDI</label><input className={field} value={form.sdi} onChange={(e) => set('sdi', e.target.value)} /></div>
+              <div className="sm:col-span-2"><label className={label}>Indirizzo sede legale</label><input className={field} value={form.indirizzo_sede_legale} onChange={(e) => set('indirizzo_sede_legale', e.target.value)} /></div>
+              <div className="sm:col-span-2"><label className={label}>Indirizzo spedizione</label><input className={field} value={form.indirizzo_spedizione} onChange={(e) => set('indirizzo_spedizione', e.target.value)} /></div>
             </div>
           </div>
 

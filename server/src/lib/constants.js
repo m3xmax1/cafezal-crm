@@ -43,6 +43,9 @@ export const CLOSED_FASI = ['Chiuso', 'K.O.'];
 // ─── Torrefazione / Retail roles ───
 export const TORREFAZIONE_EMAILS = ['torrefazione@cafezal.it'];
 
+// ─── Finance ─── (vede clienti+recap e ordini da fatturare; segna 'fatturato')
+export const FINANCE_EMAILS = ['finance@cafezal.it'];
+
 // Store login email → store name (Navigli / Gae Aulenti: TBD, no login yet)
 export const STORE_EMAIL_TO_NEGOZIO = {
   'coffeehub@cafezal.it': 'Premuda',

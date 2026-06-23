@@ -6,9 +6,16 @@ import EventoTimeline from './EventoTimeline.jsx';
 
 const d10 = (s) => (s ? String(s).slice(0, 10) : '');
 
-const TEXT = ['richiesta', 'tipologia_fiera', 'contatti', 'citta', 'note', 'motivo_ko', 'prossima_azione', 'orari_evento', 'pause_quando', 'catering_note', 'baristi', 'referente_nome', 'referente_numero', 'referente_mail', 'note_organizzazione'];
+const TEXT = ['richiesta', 'tipologia_fiera', 'contatti', 'citta', 'note', 'motivo_ko', 'prossima_azione', 'orari_evento', 'pause_quando', 'catering_note', 'baristi', 'referente_nome', 'referente_numero', 'referente_mail', 'note_organizzazione',
+  'ragione_sociale', 'alias', 'piva_cf', 'indirizzo_sede_legale', 'email', 'telefono'];
 const DATE = ['prossima_fiera_data', 'data_prossimo_followup', 'data_evento', 'data_allestimento', 'data_smontaggio'];
-const NUM = ['persone_previste'];
+const NUM = ['persone_previste', 'prezzo_evento'];
+
+// Voci di fatturazione evento: array di { descrizione, importo }.
+function normVoci(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((r) => ({ descrizione: String(r?.descrizione || ''), importo: r?.importo ?? '' }));
+}
 const BOOL = ['pause', 'acqua_fornita', 'energia_comunicata', 'spazio_comunicato', 'scia_comunicata', 'latte', 'avena', 'catering', 'attivo'];
 
 export default function EventoModal({ evento, onClose, onSaved, onDeleted }) {
@@ -31,6 +38,13 @@ export default function EventoModal({ evento, onClose, onSaved, onDeleted }) {
   const set = (k, v) => setForm((s) => ({ ...s, [k]: v }));
   const showOrg = form.status === 'organizzazione' || form.status === 'eseguita';
 
+  // Voci di fatturazione (descrizione + importo).
+  const [voci, setVoci] = useState(() => normVoci(evento?.voci_fatturazione));
+  const setVoce = (i, k, v) => setVoci((cur) => cur.map((r, idx) => (idx === i ? { ...r, [k]: v } : r)));
+  const addVoce = () => setVoci((cur) => [...cur, { descrizione: '', importo: '' }]);
+  const removeVoce = (i) => setVoci((cur) => cur.filter((_, idx) => idx !== i));
+  const vociTot = voci.reduce((s, r) => s + (Number(r.importo) || 0), 0);
+
   async function save(extra = {}) {
     if (!form.richiesta.trim() && !form.tipologia_fiera.trim() && !form.contatti.trim()) {
       setError('Indica almeno richiesta, tipologia o contatti.');
@@ -42,6 +56,9 @@ export default function EventoModal({ evento, onClose, onSaved, onDeleted }) {
       const payload = { status: form.status, commerciale_assegnato: form.commerciale_assegnato || null, permessi_status: form.permessi_status || null, ...extra };
       for (const k of TEXT) payload[k] = form[k] === '' ? null : form[k];
       for (const k of NUM) payload[k] = form[k] === '' ? null : Number(form[k]);
+      payload.voci_fatturazione = voci
+        .filter((r) => String(r.descrizione).trim() || r.importo !== '')
+        .map((r) => ({ descrizione: String(r.descrizione).trim(), importo: Number(r.importo) || 0 }));
       for (const k of DATE) payload[k] = form[k] || null;
       for (const k of BOOL) payload[k] = !!form[k];
       const res = isEdit ? await api.eventi.update(evento.id, payload) : await api.eventi.create(payload);
@@ -128,6 +145,40 @@ export default function EventoModal({ evento, onClose, onSaved, onDeleted }) {
             <div><label className={label}>Data prossimo follow-up <span className="text-slate-400">(va in agenda)</span></label><input type="date" className={field} value={form.data_prossimo_followup} onChange={(e) => set('data_prossimo_followup', e.target.value)} /></div>
             <div className="sm:col-span-2"><label className={label}>Prossima edizione / evento uguale <span className="text-slate-400">(per riproporre)</span></label><input type="date" className={field} value={form.prossima_fiera_data} onChange={(e) => set('prossima_fiera_data', e.target.value)} /></div>
             <div className="sm:col-span-2"><label className={label}>Note</label><textarea rows="2" className={field} value={form.note} onChange={(e) => set('note', e.target.value)} /></div>
+          </div>
+
+          <p className={section}>Fatturazione</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div><label className={label}>Ragione sociale</label><input className={field} value={form.ragione_sociale} onChange={(e) => set('ragione_sociale', e.target.value)} /></div>
+            <div><label className={label}>Alias</label><input className={field} value={form.alias} onChange={(e) => set('alias', e.target.value)} /></div>
+            <div><label className={label}>P. IVA / C.F.</label><input className={field} value={form.piva_cf} onChange={(e) => set('piva_cf', e.target.value)} /></div>
+            <div><label className={label}>Email</label><input className={field} value={form.email} onChange={(e) => set('email', e.target.value)} /></div>
+            <div><label className={label}>Telefono</label><input className={field} value={form.telefono} onChange={(e) => set('telefono', e.target.value)} /></div>
+            <div className="sm:col-span-2"><label className={label}>Indirizzo sede legale</label><input className={field} value={form.indirizzo_sede_legale} onChange={(e) => set('indirizzo_sede_legale', e.target.value)} /></div>
+          </div>
+          <div className="mt-3">
+            <label className={label}>Voci da fatturare</label>
+            <div className="space-y-2">
+              {voci.map((r, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input className={field} placeholder="Descrizione (es. allestimento, baristi…)" value={r.descrizione} onChange={(e) => setVoce(i, 'descrizione', e.target.value)} />
+                  <div className="relative w-28 shrink-0">
+                    <input type="number" min="0" step="0.01" className={`${field} pr-6 text-right`} placeholder="0" value={r.importo} onChange={(e) => setVoce(i, 'importo', e.target.value)} />
+                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">€</span>
+                  </div>
+                  <button type="button" onClick={() => removeVoce(i)} className="shrink-0 rounded-lg px-2 py-2 text-slate-300 hover:bg-rose-50 hover:text-rose-500" aria-label="Rimuovi voce">✕</button>
+                </div>
+              ))}
+              {voci.length === 0 && <p className="text-sm text-slate-400">Nessuna voce inserita.</p>}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+              <button type="button" onClick={addVoce} className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50">+ Aggiungi voce</button>
+              {voci.length > 0 && <div className="text-xs text-slate-500">Somma voci: <strong className="text-slate-700">€ {vociTot.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>}
+            </div>
+          </div>
+          <div className="mt-3 sm:max-w-xs">
+            <label className={label}>Prezzo evento finito (€)</label>
+            <input type="number" min="0" step="0.01" className={field} value={form.prezzo_evento} onChange={(e) => set('prezzo_evento', e.target.value)} placeholder="Prezzo finale concordato" />
           </div>
 
           {showOrg && (

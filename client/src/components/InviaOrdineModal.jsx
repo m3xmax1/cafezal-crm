@@ -28,11 +28,16 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
   };
 
   const [ship, setShip] = useState({
-    cliente_nome: opp?.azienda || '',
+    cliente_nome: opp?.azienda || '', // alias
+    ragione_sociale: opp?.ragione_sociale || '',
     persona: opp?.referente || '',
     email: opp?.email || '',
     telefono: opp?.telefono || '',
-    indirizzo_consegna: opp?.citta || '',
+    piva_cf: opp?.piva_cf || '',
+    pec: opp?.pec || '',
+    sdi: opp?.sdi || '',
+    indirizzo_sede_legale: opp?.indirizzo_sede_legale || '',
+    indirizzo_consegna: opp?.indirizzo_spedizione || opp?.citta || '',
     data_consegna: '',
     note: '',
   });
@@ -106,21 +111,45 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
     return { righe, totale, pesoTot, righeCount: righe.length, shortByProd };
   }, [qty, price, fmtIndex, cat]);
 
+  // Dati di fatturazione obbligatori per emettere l'ordine.
+  const FATT = { ragione_sociale: 'Ragione sociale', piva_cf: 'P.IVA/C.F.', pec: 'PEC', sdi: 'SDI', email: 'Email', telefono: 'Telefono', indirizzo_sede_legale: 'Sede legale', indirizzo_consegna: 'Indirizzo spedizione' };
+
   async function submit() {
     if (!righe.length) {
       setError('Aggiungi almeno un prodotto.');
       return;
     }
+    const missing = Object.entries(FATT).filter(([k]) => !String(ship[k] || '').trim()).map(([, v]) => v);
+    if (missing.length) {
+      setError(`Dati di fatturazione mancanti: ${missing.join(', ')}.`);
+      return;
+    }
     setError('');
     setSubmitting(true);
     try {
+      // Salva i dati fiscali sull'anagrafica del lead (riusati al prossimo ordine).
+      if (opp?.id) {
+        try {
+          await api.update(opp.id, {
+            ragione_sociale: ship.ragione_sociale || null, piva_cf: ship.piva_cf || null,
+            pec: ship.pec || null, sdi: ship.sdi || null, email: ship.email || null,
+            telefono: ship.telefono || null, indirizzo_sede_legale: ship.indirizzo_sede_legale || null,
+            indirizzo_spedizione: ship.indirizzo_consegna || null,
+          });
+        } catch { /* non bloccante */ }
+      }
       const res = await api.ordini.create({
         origine: 'b2b',
         opportunity_id: opp?.id || null,
-        cliente_nome: ship.cliente_nome || opp?.azienda || null,
+        cliente_nome: ship.cliente_nome || ship.ragione_sociale || opp?.azienda || null,
+        ragione_sociale: ship.ragione_sociale || null,
+        piva_cf: ship.piva_cf || null,
+        pec: ship.pec || null,
+        sdi: ship.sdi || null,
         persona: ship.persona || null,
         email: ship.email || null,
         telefono: ship.telefono || null,
+        indirizzo_sede_legale: ship.indirizzo_sede_legale || null,
         indirizzo_consegna: ship.indirizzo_consegna || null,
         data_consegna: ship.data_consegna || null,
         note: ship.note || null,
@@ -278,17 +307,25 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
                 )}
               </div>
 
-              {/* Shipping */}
+              {/* Cliente & fatturazione */}
               <div className="p-4 lg:min-h-0 lg:w-2/5 lg:overflow-y-auto">
-                <h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Spedizione</h4>
+                <h4 className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Cliente &amp; fatturazione</h4>
+                <p className="mb-2 text-[11px] text-amber-700">I campi con * sono obbligatori per emettere l&apos;ordine.</p>
                 <div className="space-y-2">
-                  <input className={fieldCls} placeholder="Cliente / ragione sociale" value={ship.cliente_nome} onChange={(e) => setS('cliente_nome', e.target.value)} />
-                  <input className={fieldCls} placeholder="Persona di riferimento" value={ship.persona} onChange={(e) => setS('persona', e.target.value)} />
+                  <input className={fieldCls} placeholder="Ragione sociale *" value={ship.ragione_sociale} onChange={(e) => setS('ragione_sociale', e.target.value)} />
+                  <input className={fieldCls} placeholder="Alias (nome comune)" value={ship.cliente_nome} onChange={(e) => setS('cliente_nome', e.target.value)} />
                   <div className="grid grid-cols-2 gap-2">
-                    <input className={fieldCls} placeholder="Email" value={ship.email} onChange={(e) => setS('email', e.target.value)} />
-                    <input className={fieldCls} placeholder="Telefono" value={ship.telefono} onChange={(e) => setS('telefono', e.target.value)} />
+                    <input className={fieldCls} placeholder="P.IVA / C.F. *" value={ship.piva_cf} onChange={(e) => setS('piva_cf', e.target.value)} />
+                    <input className={fieldCls} placeholder="Codice SDI *" value={ship.sdi} onChange={(e) => setS('sdi', e.target.value)} />
                   </div>
-                  <textarea rows="2" className={fieldCls} placeholder="Indirizzo di consegna" value={ship.indirizzo_consegna} onChange={(e) => setS('indirizzo_consegna', e.target.value)} />
+                  <input className={fieldCls} placeholder="PEC *" value={ship.pec} onChange={(e) => setS('pec', e.target.value)} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input className={fieldCls} placeholder="Email *" value={ship.email} onChange={(e) => setS('email', e.target.value)} />
+                    <input className={fieldCls} placeholder="Telefono *" value={ship.telefono} onChange={(e) => setS('telefono', e.target.value)} />
+                  </div>
+                  <input className={fieldCls} placeholder="Persona di riferimento" value={ship.persona} onChange={(e) => setS('persona', e.target.value)} />
+                  <textarea rows="2" className={fieldCls} placeholder="Indirizzo sede legale *" value={ship.indirizzo_sede_legale} onChange={(e) => setS('indirizzo_sede_legale', e.target.value)} />
+                  <textarea rows="2" className={fieldCls} placeholder="Indirizzo spedizione *" value={ship.indirizzo_consegna} onChange={(e) => setS('indirizzo_consegna', e.target.value)} />
                   <div>
                     <label className="text-xs text-slate-500">Data consegna desiderata</label>
                     <input type="date" className={fieldCls} value={ship.data_consegna} onChange={(e) => setS('data_consegna', e.target.value)} />

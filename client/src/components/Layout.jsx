@@ -9,7 +9,7 @@ const navCls = ({ isActive }) =>
   }`;
 
 export default function Layout({ children, right }) {
-  const { email, commerciale, isAdmin, isTorrefazione, store, signOut } = useAuth();
+  const { email, commerciale, isAdmin, isTorrefazione, isFinance, store, signOut } = useAuth();
   const name = store || commerciale || email || '';
   const initial = (name[0] || 'U').toUpperCase();
 
@@ -19,6 +19,8 @@ export default function Layout({ children, right }) {
       { to: '/ordina', label: 'Ordina', end: true },
       { to: '/ordini', label: 'I miei ordini' },
     ];
+  } else if (isFinance && !isAdmin) {
+    navLinks = [{ to: '/finance', label: 'Finance', end: true }];
   } else if (isTorrefazione && !isAdmin) {
     navLinks = [
       { to: '/ordini', label: 'Ordini', end: true },
@@ -42,8 +44,9 @@ export default function Layout({ children, right }) {
         { to: '/catalogo', label: 'Catalogo' },
         { to: '/stat-torrefazione', label: 'Stat. torref.' },
       );
+    if (isAdmin) navLinks.push({ to: '/finance', label: 'Finance' });
   }
-  const roleLabel = isAdmin ? 'Admin' : isTorrefazione ? 'Torrefazione' : store || 'Commerciale';
+  const roleLabel = isAdmin ? 'Admin' : isTorrefazione ? 'Torrefazione' : isFinance ? 'Finance' : store || 'Commerciale';
 
   return (
     <div className="flex min-h-full flex-col">

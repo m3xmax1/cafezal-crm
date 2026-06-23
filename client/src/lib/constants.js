@@ -46,6 +46,7 @@ export const EMAIL_TO_COMMERCIALE = {
 
 // Torrefazione / store roles (mirror del server) — fallback istantaneo dall'email.
 export const TORREFAZIONE_EMAILS = ['torrefazione@cafezal.it'];
+export const FINANCE_EMAILS = ['finance@cafezal.it'];
 export const STORE_EMAIL_TO_NEGOZIO = {
   'coffeehub@cafezal.it': 'Premuda',
   'solferino@cafezal.it': 'Solferino',

@@ -20,6 +20,9 @@ const FIELDS = [
   'permessi_status', 'acqua_fornita', 'energia_comunicata', 'spazio_comunicato', 'scia_comunicata',
   'latte', 'avena', 'persone_previste', 'catering', 'catering_note', 'baristi',
   'referente_nome', 'referente_numero', 'referente_mail', 'note_organizzazione',
+  // Dati di fatturazione evento + voci + prezzo finale
+  'ragione_sociale', 'alias', 'piva_cf', 'indirizzo_sede_legale', 'email', 'telefono',
+  'voci_fatturazione', 'prezzo_evento',
 ];
 
 export async function listEventi(user) {

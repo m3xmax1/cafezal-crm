@@ -10,6 +10,7 @@ router.get('/', requireAuth, (req, res) => {
     commerciale: req.user.commerciale,
     isAdmin: req.user.isAdmin,
     isTorrefazione: req.user.isTorrefazione,
+    isFinance: req.user.isFinance,
     store: req.user.store,
   });
 });

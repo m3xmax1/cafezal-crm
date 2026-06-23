@@ -362,8 +362,9 @@ function sanitize(payload = {}, { partial }) {
     out.categoria = v === '' ? null : v;
   }
 
-  // Free-text client fields (pipeline guidata). Empty string → null.
-  for (const f of ['referente', 'ruolo_referente', 'telefono', 'email', 'sito_web', 'citta', 'prossima_azione']) {
+  // Free-text client fields (pipeline guidata) + dati di fatturazione. Empty string → null.
+  for (const f of ['referente', 'ruolo_referente', 'telefono', 'email', 'sito_web', 'citta', 'prossima_azione',
+    'ragione_sociale', 'piva_cf', 'pec', 'sdi', 'indirizzo_sede_legale', 'indirizzo_spedizione']) {
     if (payload[f] !== undefined) {
       const v = payload[f];
       out[f] = v === null || v === '' ? null : String(v);

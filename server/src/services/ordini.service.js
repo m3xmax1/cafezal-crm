@@ -86,11 +86,12 @@ export async function listOrdini(user, filters = {}) {
   if (user.store) {
     const neg = await negozioByName(user.store);
     q = q.eq('negozio_id', neg ? neg.id : -1);
-  } else if (!user.isAdmin && !user.isTorrefazione) {
+  } else if (!user.isAdmin && !user.isTorrefazione && !user.isFinance) {
     // sales see only the b2b orders they originated (kept simple for now)
     if (!user.commerciale) return [];
     q = q.eq('origine', 'b2b').eq('created_by', user.commerciale);
   }
+  // admin / torrefazione / finance: vedono tutti gli ordini.
   if (filters.stato) q = q.eq('stato', filters.stato);
   const { data, error } = await q.limit(1000);
   if (error) throw error;
@@ -104,6 +105,16 @@ export async function createOrdine(user, payload) {
   // che altrimenti scriverebbero ordini e scalerebbero il magazzino reale.
   if (!user.store && !user.commerciale && !user.isAdmin && !user.isTorrefazione) {
     throw httpError('Non autorizzato', 403);
+  }
+  // Ordini B2B (commerciali): i dati di fatturazione sono obbligatori all'emissione.
+  if (!user.store) {
+    const req = {
+      ragione_sociale: 'Ragione sociale', piva_cf: 'P.IVA/C.F.', pec: 'PEC', sdi: 'SDI',
+      email: 'Email', telefono: 'Telefono', indirizzo_sede_legale: 'Indirizzo sede legale',
+      indirizzo_consegna: 'Indirizzo spedizione',
+    };
+    const missing = Object.entries(req).filter(([k]) => !String(payload[k] || '').trim()).map(([, v]) => v);
+    if (missing.length) throw httpError(`Dati di fatturazione mancanti: ${missing.join(', ')}`, 400);
   }
   const righe = Array.isArray(payload.righe) ? payload.righe : [];
   if (!righe.length) throw httpError('Ordine vuoto', 400);
@@ -141,6 +152,12 @@ export async function createOrdine(user, payload) {
       totale,
       peso_totale_kg: pesoTot,
       created_by: user.commerciale || user.store || user.email,
+      // Snapshot fiscale per la fattura (congelato al momento dell'invio).
+      ragione_sociale: payload.ragione_sociale || null,
+      piva_cf: payload.piva_cf || null,
+      pec: payload.pec || null,
+      sdi: payload.sdi || null,
+      indirizzo_sede_legale: payload.indirizzo_sede_legale || null,
     })
     .select()
     .single();
@@ -160,13 +177,22 @@ export async function createOrdine(user, payload) {
   return { ordine: ord, shortfalls };
 }
 
-/** Torrefazione/admin updates status, DDT, tracking, notes, problem reason. */
+/**
+ * Torrefazione/admin: status, DDT, tracking, note, data consegna prevista, problema.
+ * Finance: può SOLO segnare l'ordine come fatturato.
+ */
 export async function updateOrdine(user, id, payload) {
-  if (!user.isAdmin && !user.isTorrefazione) throw httpError('Non autorizzato', 403);
+  const isStaff = user.isAdmin || user.isTorrefazione;
+  if (!isStaff && !user.isFinance) throw httpError('Non autorizzato', 403);
+  const allowed = isStaff
+    ? ['stato', 'ddt', 'tracking', 'note', 'data_consegna', 'data_consegna_prevista', 'problema_nota', 'fatturato']
+    : ['fatturato'];
   const row = {};
-  for (const k of ['stato', 'ddt', 'tracking', 'note', 'data_consegna', 'problema_nota']) {
-    if (payload[k] !== undefined) row[k] = payload[k] || null;
+  for (const k of allowed) {
+    if (payload[k] === undefined) continue;
+    row[k] = typeof payload[k] === 'boolean' ? payload[k] : payload[k] || null;
   }
+  if (row.fatturato !== undefined) row.fatturato_at = row.fatturato ? new Date().toISOString() : null;
   // Flagging a problem without a reason still works; clearing the problem state
   // (any non-problema status) wipes a stale problem note.
   if (row.stato && row.stato !== 'problema') row.problema_nota = null;
