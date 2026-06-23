@@ -13,6 +13,7 @@ import StatisticheTorrefazione from './pages/StatisticheTorrefazione.jsx';
 import Eventi from './pages/Eventi.jsx';
 import Pianifica from './pages/Pianifica.jsx';
 import Finance from './pages/Finance.jsx';
+import CaffeVerde from './pages/CaffeVerde.jsx';
 import Profilo from './pages/Profilo.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { useAuth } from './context/AuthContext.jsx';
@@ -91,6 +92,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Finance />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/caffe-verde"
+        element={
+          <ProtectedRoute>
+            <CaffeVerde />
           </ProtectedRoute>
         }
       />

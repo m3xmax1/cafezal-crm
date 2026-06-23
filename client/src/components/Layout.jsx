@@ -25,6 +25,7 @@ export default function Layout({ children, right }) {
     navLinks = [
       { to: '/ordini', label: 'Ordini', end: true },
       { to: '/produzione', label: 'Produzione' },
+      { to: '/caffe-verde', label: 'Caffè verde' },
       { to: '/catalogo', label: 'Catalogo' },
       { to: '/stat-torrefazione', label: 'Statistiche' },
     ];
@@ -41,6 +42,7 @@ export default function Layout({ children, right }) {
       navLinks.push(
         { to: '/ordini', label: 'Ordini' },
         { to: '/produzione', label: 'Produzione' },
+        { to: '/caffe-verde', label: 'Caffè verde' },
         { to: '/catalogo', label: 'Catalogo' },
         { to: '/stat-torrefazione', label: 'Stat. torref.' },
       );

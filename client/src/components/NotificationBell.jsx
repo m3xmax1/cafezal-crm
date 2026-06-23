@@ -33,6 +33,7 @@ export default function NotificationBell() {
       );
     }
     if (isRoastery || isSales) tasks.push(api.ordini.list().then((r) => ({ ordini: r || [] })).catch(() => ({})));
+    if (isRoastery) tasks.push(api.caffeVerde.list().then((r) => ({ caffe: r || [] })).catch(() => ({})));
     Promise.all(tasks).then((parts) => {
       const merged = Object.assign({ followups: [], clienti: [], eventi: [], ordini: [] }, ...parts);
       _cache = merged;
@@ -92,6 +93,12 @@ export default function NotificationBell() {
       const ricevuti = ord.filter((o) => o.stato === 'ricevuto').length;
       if (problema) out.push({ icon: '⚠️', text: `${problema} ordini con problemi`, to: '/ordini', tone: 'rose' });
       if (ricevuti) out.push({ icon: '📥', text: `${ricevuti} nuovi ordini ricevuti`, to: '/ordini', tone: 'blue' });
+
+      const dueCaffe = (d.caffe || []).filter((c) => {
+        const next = (c.caffe_difluid || []).map((a) => a.prossima_data).filter(Boolean).sort().pop();
+        return next && next <= today;
+      }).length;
+      if (dueCaffe) out.push({ icon: '📐', text: `${dueCaffe} rilevazioni DiFluid da fare`, to: '/caffe-verde', tone: 'amber' });
     }
     return out;
   }, [d, isSales, isAdmin, isRoastery, commerciale]);

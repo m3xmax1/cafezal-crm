@@ -76,6 +76,11 @@ function OrdineCard({ o, canManage, onPatch, compact, onCorrect }) {
             ⚠ Problema
           </button>
         )}
+        {canManage && o.stato !== 'archiviato' && (
+          <button onClick={() => save({ stato: 'archiviato' })} disabled={busy} className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50">
+            📦 Archivia
+          </button>
+        )}
         {onCorrect && o.stato === 'problema' && (
           <button onClick={() => onCorrect(o)} className="rounded-md bg-rose-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-rose-700">
             ✏️ Correggi e re-invia
