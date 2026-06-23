@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout.jsx';
 import { api } from '../lib/api.js';
 
+// Campi minimi per poter fatturare un cliente.
+const FATT_KEYS = ['rag_sociale', 'piva', 'pec', 'sdi', 'indirizzo_sede_legale'];
 const eur = (v) => (v == null || v === '' ? '—' : `€ ${Number(v).toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
 const kg = (v) => (v == null ? '—' : `${Number(v).toLocaleString('it-IT', { maximumFractionDigits: 1 })} kg`);
 const fmtDate = (s) => (s ? new Date(s).toLocaleDateString('it-IT') : '');
@@ -21,6 +23,9 @@ export default function Finance() {
   const [idx, setIdx] = useState(0);
   const [done, setDone] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [numInputs, setNumInputs] = useState({}); // `${p}-${id}` -> numero fattura (bozza)
+  const numVal = (rec, p) => { const k = `${p}-${rec.id}`; return numInputs[k] !== undefined ? numInputs[k] : (rec.numero_fattura || ''); };
+  const setNum = (p, id, v) => setNumInputs((m) => ({ ...m, [`${p}-${id}`]: v }));
 
   useEffect(() => {
     Promise.all([api.clienti.list().catch(() => []), api.ordini.list().catch(() => []), api.eventi.list().catch(() => [])])
@@ -54,13 +59,15 @@ export default function Finance() {
         const ords = ordersForClient(c, ordini);
         const caffeEur = ords.reduce((s, o) => s + (Number(o.totale) || 0), 0);
         const caffeDaFatt = ords.filter((o) => !o.fatturato).reduce((s, o) => s + (Number(o.totale) || 0), 0);
-        return { ...c, caffeEur, caffeDaFatt };
+        const fattIncompleta = FATT_KEYS.some((k) => !String(c[k] || '').trim());
+        return { ...c, caffeEur, caffeDaFatt, fattIncompleta };
       })
       .sort((a, b) => (b.caffeEur + (Number(b.rata_noleggio) || 0)) - (a.caffeEur + (Number(a.rata_noleggio) || 0)));
     const totNoleggio = rows.reduce((s, c) => s + (Number(c.rata_noleggio) || 0), 0);
     const totCaffe = rows.reduce((s, c) => s + c.caffeEur, 0);
     const conRata = rows.filter((c) => Number(c.rata_noleggio) > 0).length;
-    return { rows, totNoleggio, totCaffe, conRata };
+    const incompleti = rows.filter((c) => c.fattIncompleta).length;
+    return { rows, totNoleggio, totCaffe, conRata, incompleti };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attivi, q, ordini]);
 
@@ -90,18 +97,28 @@ export default function Finance() {
   }, [eventi, q, soloDaFatturare]);
   const eventiDaFattCount = useMemo(() => (eventi || []).filter((e) => e.status === 'eseguita' && !e.fatturato).length, [eventi]);
 
+  async function saveNumEvento(ev) {
+    const v = numVal(ev, 'e').trim();
+    if (v === (ev.numero_fattura || '')) return;
+    try { const up = await api.eventi.update(ev.id, { numero_fattura: v || null }); setEventi((cur) => cur.map((x) => (x.id === ev.id ? { ...x, ...up } : x))); } catch (e) { setError(e.message); }
+  }
   async function toggleEventoFatt(e) {
     try {
-      const up = await api.eventi.update(e.id, { fatturato: !e.fatturato });
+      const up = await api.eventi.update(e.id, { fatturato: !e.fatturato, numero_fattura: numVal(e, 'e').trim() || null });
       setEventi((cur) => cur.map((x) => (x.id === e.id ? { ...x, ...up } : x)));
     } catch (err) {
       setError(err.message);
     }
   }
 
+  async function saveNumOrdine(o) {
+    const v = numVal(o, 'o').trim();
+    if (v === (o.numero_fattura || '')) return;
+    try { const up = await api.ordini.update(o.id, { numero_fattura: v || null }); setOrdini((cur) => cur.map((x) => (x.id === o.id ? { ...x, ...up } : x))); } catch (e) { setError(e.message); }
+  }
   async function toggleFatturato(o) {
     try {
-      const up = await api.ordini.update(o.id, { fatturato: !o.fatturato });
+      const up = await api.ordini.update(o.id, { fatturato: !o.fatturato, numero_fattura: numVal(o, 'o').trim() || null });
       setOrdini((cur) => cur.map((x) => (x.id === o.id ? { ...x, ...up } : x)));
     } catch (e) {
       setError(e.message);
@@ -120,8 +137,9 @@ export default function Finance() {
   async function seqMark(o) {
     setBusy(true);
     try {
-      await api.ordini.update(o.id, { fatturato: true });
-      setOrdini((cur) => cur.map((x) => (x.id === o.id ? { ...x, fatturato: true } : x)));
+      const numero_fattura = numVal(o, 'o').trim() || null;
+      await api.ordini.update(o.id, { fatturato: true, numero_fattura });
+      setOrdini((cur) => cur.map((x) => (x.id === o.id ? { ...x, fatturato: true, numero_fattura } : x)));
       setDone((n) => n + 1);
       setIdx((i) => i + 1);
     } catch (e) {
@@ -168,6 +186,11 @@ export default function Finance() {
             <div className={card}><div className="text-xs uppercase tracking-wide text-slate-400">Caffè (ordini B2B)</div><div className="text-2xl font-bold text-blue-600">{eur(recap.totCaffe)}</div></div>
             <div className={card}><div className="text-xs uppercase tracking-wide text-slate-400">Clienti con noleggio</div><div className="text-2xl font-bold text-slate-900">{recap.conRata}</div></div>
           </div>
+          {recap.incompleti > 0 && (
+            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              ⚠ <strong>{recap.incompleti} clienti con dati di fatturazione incompleti</strong> — completa P.IVA, PEC, SDI e sede legale per poterli fatturare.
+            </div>
+          )}
           <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
             <table className="w-full text-sm">
               <thead>
@@ -183,7 +206,10 @@ export default function Finance() {
               <tbody>
                 {recap.rows.map((c) => (
                   <tr key={c.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
-                    <td className="px-3 py-2 font-medium text-slate-800">{c.rag_sociale || c.cliente || '—'}</td>
+                    <td className="px-3 py-2 font-medium text-slate-800">
+                      {c.rag_sociale || c.cliente || '—'}
+                      {c.fattIncompleta && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">⚠ incompleti</span>}
+                    </td>
                     <td className="px-3 py-2 text-slate-500">{c.cliente || '—'}</td>
                     <td className="px-3 py-2 text-slate-500">{c.piva || '—'}</td>
                     <td className="px-3 py-2 text-right font-semibold text-emerald-700">{Number(c.rata_noleggio) > 0 ? eur(c.rata_noleggio) : '—'}</td>
@@ -223,9 +249,10 @@ export default function Finance() {
                     </div>
                     <div className="text-right">
                       <div className="text-lg font-bold text-slate-900">{eur(e.prezzo_evento)}</div>
-                      <button onClick={() => toggleEventoFatt(e)} className={`mt-1 rounded-md px-2.5 py-1 text-[11px] font-semibold ${e.fatturato ? 'border border-slate-300 text-slate-600 hover:bg-slate-50' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}>
+                      <button onClick={() => toggleEventoFatt(e)} className={`mt-1 block rounded-md px-2.5 py-1 text-[11px] font-semibold ${e.fatturato ? 'border border-slate-300 text-slate-600 hover:bg-slate-50' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}>
                         {e.fatturato ? 'Annulla fatturato' : 'Segna fatturato'}
                       </button>
+                      <input value={numVal(e, 'e')} onChange={(ev) => setNum('e', e.id, ev.target.value)} onBlur={() => saveNumEvento(e)} placeholder="Nº fattura" className="mt-1 w-28 rounded border border-slate-300 px-2 py-1 text-right text-xs outline-none focus:border-blue-500" />
                     </div>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-slate-100 pt-2 text-xs sm:grid-cols-4">
@@ -287,7 +314,8 @@ export default function Finance() {
                   <div className="col-span-2"><Field k="Spedizione" v={cur.indirizzo_consegna} /></div>
                 </div>
                 {(cur.ordini_righe || []).length > 0 && <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">{(cur.ordini_righe || []).map((r) => `${r.nome_caffe} ×${r.quantita}`).join(' · ')}</div>}
-                <div className="mt-5 flex items-center gap-2">
+                <input value={numVal(cur, 'o')} onChange={(e) => setNum('o', cur.id, e.target.value)} placeholder="Nº fattura (opzionale)" className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                <div className="mt-3 flex items-center gap-2">
                   <button onClick={() => seqMark(cur)} disabled={busy} className="flex-1 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">{busy ? '…' : '✓ Segna fatturato → prossimo'}</button>
                   <button onClick={() => setIdx((i) => i + 1)} disabled={busy} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Salta</button>
                 </div>
@@ -320,10 +348,11 @@ export default function Finance() {
                     <div className="text-lg font-bold text-slate-900">{eur(o.totale)}</div>
                     <button
                       onClick={() => toggleFatturato(o)}
-                      className={`mt-1 rounded-md px-2.5 py-1 text-[11px] font-semibold ${o.fatturato ? 'border border-slate-300 text-slate-600 hover:bg-slate-50' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
+                      className={`mt-1 block rounded-md px-2.5 py-1 text-[11px] font-semibold ${o.fatturato ? 'border border-slate-300 text-slate-600 hover:bg-slate-50' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
                     >
                       {o.fatturato ? 'Annulla fatturato' : 'Segna fatturato'}
                     </button>
+                    <input value={numVal(o, 'o')} onChange={(e) => setNum('o', o.id, e.target.value)} onBlur={() => saveNumOrdine(o)} placeholder="Nº fattura" className="mt-1 w-28 rounded border border-slate-300 px-2 py-1 text-right text-xs outline-none focus:border-blue-500" />
                   </div>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-slate-100 pt-2 text-xs sm:grid-cols-4">

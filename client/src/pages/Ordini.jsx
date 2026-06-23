@@ -157,6 +157,7 @@ export default function Ordini() {
   // ── Store: lista con correzione degli ordini segnalati ──
   if (store) {
     const daCorreggere = items.filter((o) => o.stato === 'problema');
+    const inArrivo = items.filter((o) => o.stato === 'spedito');
     return (
       <Layout>
         <div className="mb-4">
@@ -166,6 +167,11 @@ export default function Ordini() {
         {daCorreggere.length > 0 && (
           <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
             ⚠ <strong>{daCorreggere.length} ordine/i da correggere</strong> — la torrefazione ha segnalato un problema. Usa “Correggi e re-invia”.
+          </div>
+        )}
+        {inArrivo.length > 0 && (
+          <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            🚚 <strong>{inArrivo.length} ordine/i in arrivo</strong> — spediti dalla torrefazione (vedi la consegna prevista sulla card).
           </div>
         )}
         {loading ? (
@@ -195,8 +201,8 @@ export default function Ordini() {
     <Layout>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900">Ordini torrefazione</h2>
-          <p className="text-sm text-slate-500">Pipeline degli ordini da evadere.</p>
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">{canManage ? 'Ordini torrefazione' : 'I miei ordini'}</h2>
+          <p className="text-sm text-slate-500">{canManage ? 'Pipeline degli ordini da evadere.' : 'Stato e consegna prevista dei tuoi ordini B2B.'}</p>
         </div>
         <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
           <button onClick={() => setView('pipeline')} className={`rounded-md px-3 py-1 text-sm font-medium ${view === 'pipeline' ? 'bg-slate-900 text-white' : 'text-slate-600'}`}>Pipeline ({attivi})</button>

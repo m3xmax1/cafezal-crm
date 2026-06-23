@@ -44,6 +44,7 @@ export default function Layout({ children, right }) {
         { to: '/catalogo', label: 'Catalogo' },
         { to: '/stat-torrefazione', label: 'Stat. torref.' },
       );
+    else navLinks.push({ to: '/ordini', label: 'I miei ordini' }); // commerciale: traccia i suoi ordini B2B
     if (isAdmin) navLinks.push({ to: '/finance', label: 'Finance' });
   }
   const roleLabel = isAdmin ? 'Admin' : isTorrefazione ? 'Torrefazione' : isFinance ? 'Finance' : store || 'Commerciale';

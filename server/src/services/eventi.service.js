@@ -25,7 +25,7 @@ const FIELDS = [
   'referente_nome', 'referente_numero', 'referente_mail', 'note_organizzazione',
   // Dati di fatturazione evento + voci + prezzo finale + range data + flag fatturato
   'ragione_sociale', 'alias', 'piva_cf', 'indirizzo_sede_legale', 'email', 'telefono',
-  'voci_fatturazione', 'prezzo_evento', 'data_evento_fine', 'fatturato',
+  'voci_fatturazione', 'prezzo_evento', 'data_evento_fine', 'fatturato', 'numero_fattura',
 ];
 
 export async function listEventi(user) {
@@ -62,8 +62,15 @@ export async function createEvento(user, payload) {
 export async function updateEvento(user, id, payload) {
   const isStaff = user.isAdmin || user.commerciale;
   if (!isStaff && !user.isFinance) throw httpError('Non autorizzato', 403);
-  // Finance può solo segnare l'evento come fatturato; staff gestisce il resto.
-  const row = isStaff ? sanitize(payload) : (payload.fatturato !== undefined ? { fatturato: !!payload.fatturato } : {});
+  // Finance può segnare l'evento come fatturato + numero fattura; staff fa il resto.
+  let row;
+  if (isStaff) {
+    row = sanitize(payload);
+  } else {
+    row = {};
+    if (payload.fatturato !== undefined) row.fatturato = !!payload.fatturato;
+    if (payload.numero_fattura !== undefined) row.numero_fattura = payload.numero_fattura || null;
+  }
   if (row.fatturato !== undefined) row.fatturato_at = row.fatturato ? new Date().toISOString() : null;
   if (Object.keys(row).length === 0) return null;
   row.updated_at = new Date().toISOString();

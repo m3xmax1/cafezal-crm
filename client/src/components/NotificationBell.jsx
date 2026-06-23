@@ -32,7 +32,7 @@ export default function NotificationBell() {
         api.eventi.list().then((r) => ({ eventi: r || [] })).catch(() => ({})),
       );
     }
-    if (isRoastery) tasks.push(api.ordini.list().then((r) => ({ ordini: r || [] })).catch(() => ({})));
+    if (isRoastery || isSales) tasks.push(api.ordini.list().then((r) => ({ ordini: r || [] })).catch(() => ({})));
     Promise.all(tasks).then((parts) => {
       const merged = Object.assign({ followups: [], clienti: [], eventi: [], ordini: [] }, ...parts);
       _cache = merged;
@@ -81,6 +81,11 @@ export default function NotificationBell() {
       if (permessi) out.push({ icon: '🎪', text: `${permessi} eventi: permessi da chiedere`, to: '/eventi', tone: 'amber' });
       if (prossimiEv) out.push({ icon: '📅', text: `${prossimiEv} eventi nei prossimi 7g`, to: '/eventi', tone: 'cyan' });
     }
+    // Commerciale: i suoi ordini B2B spediti (in arrivo dalla torrefazione).
+    if (commerciale && !isAdmin) {
+      const spediti = (d.ordini || []).filter((o) => o.stato === 'spedito').length;
+      if (spediti) out.push({ icon: '🚚', text: `${spediti} ordini spediti (in arrivo)`, to: '/ordini', tone: 'blue' });
+    }
     if (isRoastery) {
       const ord = d.ordini || [];
       const problema = ord.filter((o) => o.stato === 'problema').length;
@@ -89,7 +94,7 @@ export default function NotificationBell() {
       if (ricevuti) out.push({ icon: '📥', text: `${ricevuti} nuovi ordini ricevuti`, to: '/ordini', tone: 'blue' });
     }
     return out;
-  }, [d, isSales, isAdmin, isRoastery]);
+  }, [d, isSales, isAdmin, isRoastery, commerciale]);
 
   if (store) return null;
   const count = notes.length;

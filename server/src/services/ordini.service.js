@@ -185,8 +185,8 @@ export async function updateOrdine(user, id, payload) {
   const isStaff = user.isAdmin || user.isTorrefazione;
   if (!isStaff && !user.isFinance) throw httpError('Non autorizzato', 403);
   const allowed = isStaff
-    ? ['stato', 'ddt', 'tracking', 'note', 'data_consegna', 'data_consegna_prevista', 'problema_nota', 'fatturato']
-    : ['fatturato'];
+    ? ['stato', 'ddt', 'tracking', 'note', 'data_consegna', 'data_consegna_prevista', 'problema_nota', 'fatturato', 'numero_fattura']
+    : ['fatturato', 'numero_fattura'];
   const row = {};
   for (const k of allowed) {
     if (payload[k] === undefined) continue;
