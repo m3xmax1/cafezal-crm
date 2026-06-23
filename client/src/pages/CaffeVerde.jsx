@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout.jsx';
 import { api } from '../lib/api.js';
 import CaffeModal from '../components/CaffeModal.jsx';
@@ -51,11 +52,13 @@ export default function CaffeVerde() {
   const [editing, setEditing] = useState(null); // null | 'new' | caffe
   const [metric, setMetric] = useState('water_activity');
 
+  const [params] = useSearchParams();
   function load() {
     setLoading(true);
     api.caffeVerde.list().then((d) => setItems(d || [])).catch((e) => setError(e.message)).finally(() => setLoading(false));
   }
   useEffect(() => { load(); }, []);
+  useEffect(() => { const c = params.get('caffe'); if (c) setSelId(Number(c)); }, [params]);
 
   const sel = useMemo(() => items.find((c) => c.id === selId) || null, [items, selId]);
 

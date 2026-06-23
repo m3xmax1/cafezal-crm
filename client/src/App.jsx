@@ -14,6 +14,7 @@ import Eventi from './pages/Eventi.jsx';
 import Pianifica from './pages/Pianifica.jsx';
 import Finance from './pages/Finance.jsx';
 import CaffeVerde from './pages/CaffeVerde.jsx';
+import CaffeAgenda from './pages/CaffeAgenda.jsx';
 import Profilo from './pages/Profilo.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { useAuth } from './context/AuthContext.jsx';
@@ -100,6 +101,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <CaffeVerde />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/caffe-agenda"
+        element={
+          <ProtectedRoute>
+            <CaffeAgenda />
           </ProtectedRoute>
         }
       />
