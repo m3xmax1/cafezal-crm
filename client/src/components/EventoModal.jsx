@@ -8,7 +8,7 @@ const d10 = (s) => (s ? String(s).slice(0, 10) : '');
 
 const TEXT = ['richiesta', 'tipologia_fiera', 'contatti', 'citta', 'note', 'motivo_ko', 'prossima_azione', 'orari_evento', 'pause_quando', 'catering_note', 'baristi', 'referente_nome', 'referente_numero', 'referente_mail', 'note_organizzazione',
   'ragione_sociale', 'alias', 'piva_cf', 'indirizzo_sede_legale', 'email', 'telefono'];
-const DATE = ['prossima_fiera_data', 'data_prossimo_followup', 'data_evento', 'data_allestimento', 'data_smontaggio'];
+const DATE = ['prossima_fiera_data', 'data_prossimo_followup', 'data_evento', 'data_evento_fine', 'data_allestimento', 'data_smontaggio'];
 const NUM = ['persone_previste', 'prezzo_evento'];
 
 // Voci di fatturazione evento: array di { descrizione, importo }.
@@ -120,6 +120,14 @@ export default function EventoModal({ evento, onClose, onSaved, onDeleted }) {
               </select>
             </div>
             <div><label className={label}>Città / luogo</label><input className={field} value={form.citta} onChange={(e) => set('citta', e.target.value)} /></div>
+            <div className="sm:col-span-2">
+              <label className={label}>Date evento <span className="text-slate-400">(dal–al, eventi su più giorni)</span></label>
+              <div className="flex items-center gap-2">
+                <input type="date" className={field} value={form.data_evento} onChange={(e) => set('data_evento', e.target.value)} />
+                <span className="shrink-0 text-slate-400">→</span>
+                <input type="date" className={field} value={form.data_evento_fine} onChange={(e) => set('data_evento_fine', e.target.value)} />
+              </div>
+            </div>
             <div className="sm:col-span-2"><label className={label}>Contatti</label><input className={field} value={form.contatti} onChange={(e) => set('contatti', e.target.value)} placeholder="Nome, telefono, email…" /></div>
             <div>
               <label className={label}>Status</label>
@@ -185,7 +193,6 @@ export default function EventoModal({ evento, onClose, onSaved, onDeleted }) {
             <>
               <div className="mt-6 rounded-lg bg-cyan-50 px-3 py-2 text-sm font-semibold text-cyan-800">🎪 Organizzazione evento</div>
               <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div><label className={label}>Data evento</label><input type="date" className={field} value={form.data_evento} onChange={(e) => set('data_evento', e.target.value)} /></div>
                 <div><label className={label}>Allestimento</label><input type="date" className={field} value={form.data_allestimento} onChange={(e) => set('data_allestimento', e.target.value)} /></div>
                 <div><label className={label}>Smontaggio</label><input type="date" className={field} value={form.data_smontaggio} onChange={(e) => set('data_smontaggio', e.target.value)} /></div>
                 <div className="sm:col-span-2"><label className={label}>Orari evento</label><input className={field} value={form.orari_evento} onChange={(e) => set('orari_evento', e.target.value)} placeholder="Es. 10:00–20:00" /></div>

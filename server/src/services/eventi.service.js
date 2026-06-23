@@ -7,10 +7,13 @@ function httpError(message, status) {
   return e;
 }
 
-// Eventi è una sezione commerciale. Default-deny: solo admin o un commerciale
-// mappato (store, torrefazione non-admin e account senza ruolo sono esclusi).
+// Scrittura: solo admin o un commerciale mappato (default-deny).
 function assertAccess(user) {
   if (!user.isAdmin && !user.commerciale) throw httpError('Non autorizzato', 403);
+}
+// Lettura: anche la finance (vede gli eventi da fatturare).
+function assertRead(user) {
+  if (!user.isAdmin && !user.commerciale && !user.isFinance) throw httpError('Non autorizzato', 403);
 }
 
 const FIELDS = [
@@ -20,13 +23,13 @@ const FIELDS = [
   'permessi_status', 'acqua_fornita', 'energia_comunicata', 'spazio_comunicato', 'scia_comunicata',
   'latte', 'avena', 'persone_previste', 'catering', 'catering_note', 'baristi',
   'referente_nome', 'referente_numero', 'referente_mail', 'note_organizzazione',
-  // Dati di fatturazione evento + voci + prezzo finale
+  // Dati di fatturazione evento + voci + prezzo finale + range data + flag fatturato
   'ragione_sociale', 'alias', 'piva_cf', 'indirizzo_sede_legale', 'email', 'telefono',
-  'voci_fatturazione', 'prezzo_evento',
+  'voci_fatturazione', 'prezzo_evento', 'data_evento_fine', 'fatturato',
 ];
 
 export async function listEventi(user) {
-  assertAccess(user);
+  assertRead(user);
   const { data, error } = await db
     .from('eventi')
     .select('*')
@@ -57,8 +60,11 @@ export async function createEvento(user, payload) {
 }
 
 export async function updateEvento(user, id, payload) {
-  assertAccess(user);
-  const row = sanitize(payload);
+  const isStaff = user.isAdmin || user.commerciale;
+  if (!isStaff && !user.isFinance) throw httpError('Non autorizzato', 403);
+  // Finance può solo segnare l'evento come fatturato; staff gestisce il resto.
+  const row = isStaff ? sanitize(payload) : (payload.fatturato !== undefined ? { fatturato: !!payload.fatturato } : {});
+  if (row.fatturato !== undefined) row.fatturato_at = row.fatturato ? new Date().toISOString() : null;
   if (Object.keys(row).length === 0) return null;
   row.updated_at = new Date().toISOString();
   const { data, error } = await db.from('eventi').update(row).eq('id', id).select().single();

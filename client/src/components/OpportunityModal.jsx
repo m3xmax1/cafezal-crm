@@ -6,6 +6,7 @@ import {
 import ActivityTimeline from './ActivityTimeline.jsx';
 import SampleManager from './SampleManager.jsx';
 import InviaOrdineModal from './InviaOrdineModal.jsx';
+import ClienteModal from './ClienteModal.jsx';
 
 // Build a wa.me link from a phone number (defaults to Italy country code).
 function waLink(tel) {
@@ -59,6 +60,7 @@ export default function OpportunityModal({
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
   const [showOrdine, setShowOrdine] = useState(false);
+  const [showConverti, setShowConverti] = useState(false);
   const isEdit = Boolean(opp?.id);
 
   useEffect(() => {
@@ -176,7 +178,7 @@ export default function OpportunityModal({
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4 ${showOrdine ? 'invisible' : ''}`}
+      className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4 ${showOrdine || showConverti ? 'invisible' : ''}`}
       onClick={onClose}
     >
       <div
@@ -491,15 +493,24 @@ export default function OpportunityModal({
             </div>
           )}
 
-          {/* ── Invia ordine alla torrefazione (cliente acquisito) ── */}
+          {/* ── Cliente acquisito: invia ordine / converti in cliente ── */}
           {form.fase_pipeline === 'Chiuso' && isEdit && (
-            <button
-              type="button"
-              onClick={() => setShowOrdine(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
-            >
-              📦 Invia ordine alla torrefazione
-            </button>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setShowOrdine(true)}
+                className="flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+              >
+                📦 Invia ordine
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowConverti(true)}
+                className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+              >
+                👤 Converti in cliente
+              </button>
+            </div>
           )}
 
           {/* ── Note ── */}
@@ -551,6 +562,27 @@ export default function OpportunityModal({
       </div>
 
       {showOrdine && <InviaOrdineModal opp={opp} onClose={() => setShowOrdine(false)} />}
+      {showConverti && (
+        <ClienteModal
+          cliente={{
+            cliente: opp.azienda || '',
+            rag_sociale: form.ragione_sociale || '',
+            piva: form.piva_cf || '',
+            email: form.email || '',
+            telefono: form.telefono || '',
+            pec: form.pec || '',
+            sdi: form.sdi || '',
+            indirizzo_sede_legale: form.indirizzo_sede_legale || '',
+            indirizzo_spedizione: form.indirizzo_spedizione || '',
+            account_manager: form.commerciale_assegnato || '',
+            opportunity_id: opp.id,
+            attivo: true,
+          }}
+          onClose={() => setShowConverti(false)}
+          onSaved={() => setShowConverti(false)}
+          onDeleted={() => setShowConverti(false)}
+        />
+      )}
     </div>
   );
 }

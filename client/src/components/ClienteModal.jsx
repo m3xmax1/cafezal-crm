@@ -41,6 +41,7 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted, ren
     for (const k of BOOL) f[k] = cliente?.[k] ?? false;
     f.account_manager = cliente?.account_manager || '';
     f.tags = (cliente?.tags || []).join(', ');
+    f.opportunity_id = cliente?.opportunity_id || ''; // collegamento al lead (convert)
     if (renew) {
       // Suggest a fresh period for the renewed contract.
       f.firma = todayISO();
@@ -96,7 +97,7 @@ export default function ClienteModal({ cliente, onClose, onSaved, onDeleted, ren
     setError('');
     setSaving(true);
     try {
-      const payload = { account_manager: form.account_manager || null, consumi: consumiClean, tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [] };
+      const payload = { account_manager: form.account_manager || null, opportunity_id: form.opportunity_id || null, consumi: consumiClean, tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [] };
       for (const k of TEXT) payload[k] = form[k] === '' ? null : form[k];
       for (const k of NUM) payload[k] = form[k] === '' ? null : Number(form[k]);
       for (const k of DATE) payload[k] = form[k] || null;
