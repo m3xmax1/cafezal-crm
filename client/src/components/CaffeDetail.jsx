@@ -25,26 +25,28 @@ export default function CaffeDetail({ caffe, onBack, onEdit, onChanged }) {
   const difluid = useMemo(() => [...(caffe.caffe_difluid || [])].sort((a, b) => (b.data || '').localeCompare(a.data || '')), [caffe]);
   const cupping = useMemo(() => [...(caffe.caffe_cupping || [])].sort((a, b) => (b.data || '').localeCompare(a.data || '')), [caffe]);
 
-  // ── form DiFluid (nuovo + modifica) ──
-  const emptyDf = () => ({ data: todayISO(), prossima_data: '', water_activity: '', moisture: '', true_density: '', mesh_size: '', roast_level: '', n_lotto: '', note: '' });
+  // ── form DiFluid (nuovo + modifica): caffè verde + tostata ──
+  const DF_NUM = ['water_activity', 'moisture', 'true_density', 'omni_chicco', 'omni_macinato', 'micron', 'dose_bevanda', 'tds'];
+  const DF_KEYS = ['data', 'prossima_data', 'n_lotto', 'water_activity', 'moisture', 'true_density', 'mesh_size', 'roast_level', 'omni_chicco', 'omni_macinato', 'micron', 'dose_bevanda', 'ratio', 'tds', 'note'];
+  const emptyDf = () => { const f = { data: todayISO() }; DF_KEYS.forEach((k) => { if (k !== 'data') f[k] = ''; }); return f; };
   const [df, setDf] = useState(emptyDf);
   const [editDfId, setEditDfId] = useState(null);
   const setDfK = (k, v) => setDf((s) => ({ ...s, [k]: v }));
   const [busyDf, setBusyDf] = useState(false);
+  const omniDiff = (a, b) => (a !== '' && a != null && b !== '' && b != null && !Number.isNaN(Number(a)) && !Number.isNaN(Number(b)) ? Math.round((Number(a) - Number(b)) * 100) / 100 : null);
+  const dfOmni = omniDiff(df.omni_chicco, df.omni_macinato);
   function startEditDf(a) {
     setEditDfId(a.id);
-    setDf({
-      data: (a.data || '').slice(0, 10), prossima_data: (a.prossima_data || '').slice(0, 10),
-      water_activity: a.water_activity ?? '', moisture: a.moisture ?? '', true_density: a.true_density ?? '',
-      mesh_size: a.mesh_size ?? '', roast_level: a.roast_level ?? '', n_lotto: a.n_lotto ?? '', note: a.note ?? '',
-    });
+    const f = {};
+    DF_KEYS.forEach((k) => { f[k] = k === 'data' || k === 'prossima_data' ? (a[k] || '').slice(0, 10) : (a[k] ?? ''); });
+    setDf(f);
   }
   const cancelEditDf = () => { setEditDfId(null); setDf(emptyDf()); };
   async function saveDifluid() {
     setBusyDf(true); setError('');
     try {
       const p = { ...df };
-      ['water_activity', 'moisture', 'true_density'].forEach((k) => { p[k] = p[k] === '' ? null : Number(p[k]); });
+      DF_NUM.forEach((k) => { p[k] = p[k] === '' ? null : Number(p[k]); });
       if (editDfId) await api.caffeVerde.updateDifluid(editDfId, p);
       else await api.caffeVerde.addDifluid(caffe.id, p);
       setDf(emptyDf()); setEditDfId(null);
@@ -110,17 +112,33 @@ export default function CaffeDetail({ caffe, onBack, onEdit, onChanged }) {
           <h3 className={section}>📐 Analisi DiFluid</h3>
           <div className={`mb-3 rounded-lg border p-3 ${editDfId ? 'border-emerald-300 bg-emerald-50/60' : 'border-slate-200 bg-slate-50'}`}>
             {editDfId && <div className="mb-2 text-[11px] font-semibold text-emerald-700">✎ Modifica rilevazione</div>}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <div><label className={lbl}>Data rilevazione</label><input type="date" className={field} value={df.data} onChange={(e) => setDfK('data', e.target.value)} /></div>
-              <div><label className={lbl}>Prossima (in agenda)</label><input type="date" className={field} value={df.prossima_data} onChange={(e) => setDfK('prossima_data', e.target.value)} /></div>
+              <div><label className={lbl}>Prossima (agenda)</label><input type="date" className={field} value={df.prossima_data} onChange={(e) => setDfK('prossima_data', e.target.value)} /></div>
+              <div><label className={lbl}>N. lotto</label><input className={field} value={df.n_lotto} onChange={(e) => setDfK('n_lotto', e.target.value)} /></div>
+            </div>
+
+            <p className="mb-1 mt-3 text-[10px] font-bold uppercase tracking-wide text-emerald-600">🌱 Caffè verde</p>
+            <div className="grid grid-cols-2 gap-2">
               <div><label className={lbl}>Attività acqua (aw)</label><input type="number" step="0.001" className={field} value={df.water_activity} onChange={(e) => setDfK('water_activity', e.target.value)} placeholder="es. 0,52" /></div>
               <div><label className={lbl}>Umidità %</label><input type="number" step="0.1" className={field} value={df.moisture} onChange={(e) => setDfK('moisture', e.target.value)} placeholder="es. 10,8" /></div>
               <div><label className={lbl}>Densità reale (g/L)</label><input type="number" step="0.1" className={field} value={df.true_density} onChange={(e) => setDfK('true_density', e.target.value)} placeholder="es. 720" /></div>
               <div><label className={lbl}>Setaccio (mesh)</label><input className={field} value={df.mesh_size} onChange={(e) => setDfK('mesh_size', e.target.value)} placeholder="es. 15/16" /></div>
-              <div><label className={lbl}>Roast level</label><input className={field} value={df.roast_level} onChange={(e) => setDfK('roast_level', e.target.value)} placeholder="es. Medio / Agtron 58" /></div>
-              <div><label className={lbl}>N. lotto</label><input className={field} value={df.n_lotto} onChange={(e) => setDfK('n_lotto', e.target.value)} /></div>
             </div>
-            <div className="mt-2 flex gap-2">
+
+            <p className="mb-1 mt-3 text-[10px] font-bold uppercase tracking-wide text-amber-600">🔥 Tostata</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className={lbl}>Roast level</label><input className={field} value={df.roast_level} onChange={(e) => setDfK('roast_level', e.target.value)} placeholder="es. Medio / Agtron 58" /></div>
+              <div><label className={lbl}>Micron macinatura</label><input type="number" step="1" className={field} value={df.micron} onChange={(e) => setDfK('micron', e.target.value)} placeholder="es. 800" /></div>
+              <div><label className={lbl}>Omni color chicco intero</label><input type="number" step="0.1" className={field} value={df.omni_chicco} onChange={(e) => setDfK('omni_chicco', e.target.value)} /></div>
+              <div><label className={lbl}>Omni color macinato</label><input type="number" step="0.1" className={field} value={df.omni_macinato} onChange={(e) => setDfK('omni_macinato', e.target.value)} /></div>
+              <div className="col-span-2 rounded-md bg-white px-2.5 py-1.5 text-xs text-slate-600 ring-1 ring-slate-200">Differenza chicco / macinato: <strong className="text-slate-800">{dfOmni == null ? '—' : dfOmni.toLocaleString('it-IT')}</strong></div>
+              <div><label className={lbl}>Dose bevanda (g)</label><input type="number" step="0.1" className={field} value={df.dose_bevanda} onChange={(e) => setDfK('dose_bevanda', e.target.value)} /></div>
+              <div><label className={lbl}>Ratio</label><input className={field} value={df.ratio} onChange={(e) => setDfK('ratio', e.target.value)} placeholder="es. 1:16" /></div>
+              <div><label className={lbl}>TDS %</label><input type="number" step="0.01" className={field} value={df.tds} onChange={(e) => setDfK('tds', e.target.value)} placeholder="es. 1,35" /></div>
+            </div>
+
+            <div className="mt-3 flex gap-2">
               <button onClick={saveDifluid} disabled={busyDf} className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">{busyDf ? '…' : editDfId ? 'Salva modifiche' : '+ Aggiungi rilevazione'}</button>
               {editDfId && <button onClick={cancelEditDf} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">Annulla</button>}
             </div>
@@ -128,28 +146,26 @@ export default function CaffeDetail({ caffe, onBack, onEdit, onChanged }) {
           {difluid.length === 0 ? (
             <p className="text-sm text-slate-400">Nessuna analisi DiFluid.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead><tr className="text-left text-[10px] uppercase tracking-wide text-slate-400"><th className="py-1">Data</th><th className="py-1 text-right">aw</th><th className="py-1 text-right">Umid.%</th><th className="py-1 text-right">Dens.</th><th className="py-1">Mesh</th><th className="py-1">Roast</th><th className="py-1">Lotto</th><th className="py-1">Prossima</th><th /></tr></thead>
-                <tbody>
-                  {difluid.map((a) => (
-                    <tr key={a.id} className={`border-t border-slate-50 ${editDfId === a.id ? 'bg-emerald-50' : ''}`}>
-                      <td className="py-1.5 font-medium text-slate-700">{fmtDate(a.data)}</td>
-                      <td className="py-1.5 text-right">{num(a.water_activity)}</td>
-                      <td className="py-1.5 text-right">{num(a.moisture)}</td>
-                      <td className="py-1.5 text-right">{num(a.true_density)}</td>
-                      <td className="py-1.5">{a.mesh_size || '—'}</td>
-                      <td className="py-1.5">{a.roast_level || '—'}</td>
-                      <td className="py-1.5">{a.n_lotto || '—'}</td>
-                      <td className="py-1.5 text-slate-500">{a.prossima_data ? `⏰ ${fmtDate(a.prossima_data)}` : '—'}</td>
-                      <td className="py-1.5 text-right whitespace-nowrap">
+            <div className="space-y-2">
+              {difluid.map((a) => {
+                const hasVerde = a.water_activity != null || a.moisture != null || a.true_density != null || a.mesh_size;
+                const hasTostata = a.roast_level || a.omni_chicco != null || a.omni_macinato != null || a.micron != null || a.tds != null || a.dose_bevanda != null || a.ratio;
+                const od = omniDiff(a.omni_chicco, a.omni_macinato);
+                return (
+                  <div key={a.id} className={`rounded-lg border p-2.5 text-xs ${editDfId === a.id ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200'}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-slate-700">{fmtDate(a.data)}{a.n_lotto && <span className="font-normal text-slate-400"> · lotto {a.n_lotto}</span>}</span>
+                      <span className="flex items-center gap-2 whitespace-nowrap">
+                        {a.prossima_data && <span className="text-[11px] text-slate-500">⏰ {fmtDate(a.prossima_data)}</span>}
                         <button onClick={() => startEditDf(a)} className="text-slate-400 hover:text-emerald-600" title="Modifica">✎</button>
-                        <button onClick={() => delDifluid(a.id)} className="ml-2 text-slate-300 hover:text-red-500" title="Elimina">✕</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <button onClick={() => delDifluid(a.id)} className="text-slate-300 hover:text-red-500" title="Elimina">✕</button>
+                      </span>
+                    </div>
+                    {hasVerde && <div className="mt-1 text-slate-600"><span className="font-semibold text-emerald-600">🌱 Verde</span> · aw {num(a.water_activity)} · umid {num(a.moisture)}% · dens {num(a.true_density)} g/L · mesh {a.mesh_size || '—'}</div>}
+                    {hasTostata && <div className="mt-0.5 text-slate-600"><span className="font-semibold text-amber-600">🔥 Tostata</span> · roast {a.roast_level || '—'} · Omni {num(a.omni_chicco)}/{num(a.omni_macinato)}{od != null ? ` (Δ ${od})` : ''} · micron {num(a.micron)} · dose {num(a.dose_bevanda)}g · ratio {a.ratio || '—'} · TDS {num(a.tds)}%</div>}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

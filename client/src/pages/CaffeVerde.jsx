@@ -12,6 +12,8 @@ const DIFLUID_METRICS = [
   { k: 'water_activity', label: 'Attività acqua (aw)' },
   { k: 'moisture', label: 'Umidità %' },
   { k: 'true_density', label: 'Densità g/L' },
+  { k: 'tds', label: 'TDS %' },
+  { k: 'micron', label: 'Micron macinatura' },
 ];
 
 function pearson(xs, ys) {

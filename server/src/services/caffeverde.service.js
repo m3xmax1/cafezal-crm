@@ -12,7 +12,8 @@ function assertAccess(user) {
 }
 
 const CAFFE_FIELDS = ['nome', 'provenienza', 'tipologia', 'processo', 'costo', 'produttore', 'note', 'attivo'];
-const DIFLUID_FIELDS = ['data', 'prossima_data', 'water_activity', 'moisture', 'true_density', 'mesh_size', 'roast_level', 'n_lotto', 'note'];
+const DIFLUID_FIELDS = ['data', 'prossima_data', 'water_activity', 'moisture', 'true_density', 'mesh_size', 'n_lotto', 'note',
+  'roast_level', 'omni_chicco', 'omni_macinato', 'micron', 'dose_bevanda', 'ratio', 'tds'];
 const CUPPING_FIELDS = ['data', 'fragranza', 'flavor', 'aftertaste', 'acidity', 'body', 'balance', 'uniformity', 'clean_cup', 'sweetness', 'overall', 'difetti', 'punteggio', 'assaggiatore', 'note'];
 
 const SELECT = '*, caffe_difluid(*), caffe_cupping(*)';
