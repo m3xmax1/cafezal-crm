@@ -213,6 +213,37 @@ export async function updateOrdine(user, id, payload) {
 }
 
 /**
+ * Spedizione automatica: il 1º ordine B2B del MESE per un cliente è gratuito;
+ * dal 2º il commerciale riceve un alert e decide se addebitarla.
+ * Match del cliente: opportunity_id → P.IVA → ragione sociale/nome (normalizzati),
+ * sugli ordini del mese corrente di TUTTI i commerciali (service role).
+ */
+export async function spedizioneCheck(user, { opportunity_id, piva_cf, cliente } = {}) {
+  if (!user.isAdmin && !user.commerciale) throw httpError('Non autorizzato', 403);
+  const norm = (s) => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const romeToday = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
+  const monthStart = `${romeToday.slice(0, 7)}-01`;
+
+  const { data, error } = await db
+    .from('ordini')
+    .select('id, opportunity_id, piva_cf, ragione_sociale, cliente_nome')
+    .eq('origine', 'b2b')
+    .gte('data_ordine', monthStart);
+  if (error) throw error;
+
+  const kP = norm(piva_cf);
+  const kC = norm(cliente);
+  const matched = (data || []).filter((o) => {
+    if (opportunity_id && o.opportunity_id && String(o.opportunity_id) === String(opportunity_id)) return true;
+    if (kP && norm(o.piva_cf) && kP === norm(o.piva_cf)) return true;
+    const on = `${norm(o.ragione_sociale)}|${norm(o.cliente_nome)}`;
+    if (kC && kC.length >= 4 && on.includes(kC)) return true;
+    return false;
+  });
+  return { ordiniMese: matched.length, gratuita: matched.length === 0, mese: monthStart.slice(0, 7) };
+}
+
+/**
  * Elimina un ordine appena inviato: il locale può cancellare SOLO i propri
  * ordini ancora in "ricevuto" (non lavorati); l'admin può eliminare anche
  * oltre. Il magazzino viene ri-accreditato dei kg delle righe.

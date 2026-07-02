@@ -44,6 +44,21 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
   });
   const setS = (k, v) => setShip((s) => ({ ...s, [k]: v }));
 
+  // Spedizione automatica: 1º ordine B2B del MESE per il cliente → gratuita;
+  // dal 2º il server ce lo segnala e il commerciale decide se addebitarla.
+  const [sped, setSped] = useState({ checked: false, ordiniMese: 0, decision: null });
+  useEffect(() => {
+    api.ordini
+      .spedizioneCheck({
+        opportunity_id: opp?.id || '',
+        piva_cf: opp?.piva_cf || '',
+        cliente: opp?.azienda || opp?.ragione_sociale || '',
+      })
+      .then((r) => setSped({ checked: true, ordiniMese: r.ordiniMese || 0, decision: null }))
+      .catch(() => setSped({ checked: true, ordiniMese: 0, decision: null }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opp?.id]);
+
   useEffect(() => {
     api.prodotti
       .list()
@@ -125,6 +140,15 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
       setError(`Dati di fatturazione mancanti: ${missing.join(', ')}.`);
       return;
     }
+    // Spedizione: dal 2º ordine del mese la scelta è obbligatoria.
+    if (sped.checked && sped.ordiniMese > 0 && sped.decision === null) {
+      setError(`Spedizione: è il ${sped.ordiniMese + 1}º ordine del mese per questo cliente — indica se addebitarla (riquadro giallo).`);
+      return;
+    }
+    if (sped.decision === 'si' && !(Number(ship.costo_trasporto) > 0)) {
+      setError('Inserisci il costo di spedizione da addebitare.');
+      return;
+    }
     setError('');
     setSubmitting(true);
     try {
@@ -153,7 +177,8 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
         indirizzo_sede_legale: ship.indirizzo_sede_legale || null,
         indirizzo_consegna: ship.indirizzo_consegna || null,
         data_consegna: ship.data_consegna || null,
-        costo_trasporto: ship.costo_trasporto === '' ? null : Number(ship.costo_trasporto),
+        // Addebitata solo se scelto esplicitamente (1º ordine del mese: sempre gratis).
+        costo_trasporto: sped.decision === 'si' ? Number(ship.costo_trasporto) : null,
         note: ship.note || null,
         righe,
       });
@@ -328,17 +353,49 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
                   <input className={fieldCls} placeholder="Persona di riferimento" value={ship.persona} onChange={(e) => setS('persona', e.target.value)} />
                   <textarea rows="2" className={fieldCls} placeholder="Indirizzo sede legale *" value={ship.indirizzo_sede_legale} onChange={(e) => setS('indirizzo_sede_legale', e.target.value)} />
                   <textarea rows="2" className={fieldCls} placeholder="Indirizzo spedizione *" value={ship.indirizzo_consegna} onChange={(e) => setS('indirizzo_consegna', e.target.value)} />
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs text-slate-500">Data consegna desiderata</label>
-                      <input type="date" className={fieldCls} value={ship.data_consegna} onChange={(e) => setS('data_consegna', e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-500">Costo di trasporto (€)</label>
-                      <input type="number" min="0" step="0.01" className={fieldCls} placeholder="0 = gratuito" value={ship.costo_trasporto} onChange={(e) => setS('costo_trasporto', e.target.value)} />
-                    </div>
+                  <div>
+                    <label className="text-xs text-slate-500">Data consegna desiderata</label>
+                    <input type="date" className={fieldCls} value={ship.data_consegna} onChange={(e) => setS('data_consegna', e.target.value)} />
                   </div>
-                  <p className="-mt-1 text-[11px] text-slate-400">🚚 Prima consegna gratuita — indica il costo solo se va addebitato (si somma al totale dell'ordine).</p>
+                  {/* Spedizione automatica: gratis al 1º ordine del mese, alert dal 2º */}
+                  {!sped.checked ? (
+                    <p className="text-[11px] text-slate-400">🚚 Controllo gli ordini del mese di questo cliente…</p>
+                  ) : sped.ordiniMese === 0 ? (
+                    <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+                      🚚 Primo ordine del mese per questo cliente → <strong>spedizione gratuita</strong>.
+                    </p>
+                  ) : (
+                    <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
+                      <p className="text-xs font-semibold text-amber-800">
+                        ⚠️ Questo cliente ha già <strong>{sped.ordiniMese} ordine/i questo mese</strong> — vuoi far pagare la spedizione?
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSped((s) => ({ ...s, decision: 'si' }))}
+                          className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${sped.decision === 'si' ? 'bg-amber-600 text-white' : 'border border-amber-300 text-amber-700 hover:bg-amber-100'}`}
+                        >
+                          Sì, addebita
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSped((s) => ({ ...s, decision: 'no' }))}
+                          className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${sped.decision === 'no' ? 'bg-emerald-600 text-white' : 'border border-emerald-300 text-emerald-700 hover:bg-emerald-100'}`}
+                        >
+                          No, gratuita
+                        </button>
+                        {sped.decision === 'si' && (
+                          <input
+                            type="number" min="0" step="0.01" autoFocus
+                            className="w-28 rounded-lg border border-amber-300 px-2 py-1 text-sm outline-none focus:border-amber-500"
+                            placeholder="€ costo"
+                            value={ship.costo_trasporto}
+                            onChange={(e) => setS('costo_trasporto', e.target.value)}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <textarea rows="2" className={fieldCls} placeholder="Note per la torrefazione" value={ship.note} onChange={(e) => setS('note', e.target.value)} />
                 </div>
               </div>

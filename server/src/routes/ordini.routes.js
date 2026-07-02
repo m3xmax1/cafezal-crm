@@ -6,6 +6,7 @@ const router = Router();
 
 router.use(requireAuth);
 router.get('/', ctrl.list);
+router.get('/spedizione-check', ctrl.spedizioneCheck); // 1º ordine del mese del cliente? → spedizione gratis
 router.post('/', ctrl.create);
 router.patch('/:id', ctrl.update);
 router.delete('/:id', ctrl.remove); // store: elimina un proprio ordine ancora "ricevuto"

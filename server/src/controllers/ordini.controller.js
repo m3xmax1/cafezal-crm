@@ -26,6 +26,18 @@ export async function update(req, res, next) {
   }
 }
 
+export async function spedizioneCheck(req, res, next) {
+  try {
+    res.json(await service.spedizioneCheck(req.user, {
+      opportunity_id: req.query.opportunity_id || null,
+      piva_cf: req.query.piva_cf || '',
+      cliente: req.query.cliente || '',
+    }));
+  } catch (e) {
+    next(e);
+  }
+}
+
 export async function remove(req, res, next) {
   try {
     res.json(await service.deleteOrdine(req.user, req.params.id));

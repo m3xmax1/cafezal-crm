@@ -82,6 +82,7 @@ export const api = {
     create: (payload) => request('/ordini', { method: 'POST', body: JSON.stringify(payload) }),
     update: (id, payload) => request(`/ordini/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
     remove: (id) => request(`/ordini/${id}`, { method: 'DELETE' }),
+    spedizioneCheck: (p = {}) => request(`/ordini/spedizione-check?${new URLSearchParams(Object.fromEntries(Object.entries(p).filter(([, v]) => v)))}`),
     correct: (id, payload) => request(`/ordini/${id}/correct`, { method: 'POST', body: JSON.stringify(payload) }),
   },
 
