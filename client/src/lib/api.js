@@ -81,6 +81,7 @@ export const api = {
     list: (stato) => request(`/ordini${stato ? `?stato=${encodeURIComponent(stato)}` : ''}`),
     create: (payload) => request('/ordini', { method: 'POST', body: JSON.stringify(payload) }),
     update: (id, payload) => request(`/ordini/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+    remove: (id) => request(`/ordini/${id}`, { method: 'DELETE' }),
     correct: (id, payload) => request(`/ordini/${id}/correct`, { method: 'POST', body: JSON.stringify(payload) }),
   },
 
@@ -128,6 +129,29 @@ export const api = {
     request(`/opportunities/${id}/activities`, { method: 'POST', body: JSON.stringify(payload) }),
   deleteActivity: (id, actId) =>
     request(`/opportunities/${id}/activities/${actId}`, { method: 'DELETE' }),
+
+  // Cassa Tilby (solo admin + finance): aggregati, analisi+forecast, sync, export
+  cassa: {
+    daily: (from, to) => request(`/cassa/daily?${new URLSearchParams({ ...(from && { from }), ...(to && { to }) })}`),
+    analisi: (from) => request(`/cassa/analisi${from ? `?from=${from}` : ''}`),
+    sync: (p = {}) => request('/cassa/sync', { method: 'POST', body: JSON.stringify(p) }),
+    config: () => request('/cassa/config'),
+    // Scarica l'Excel autenticato e apre il "Salva con nome" del browser.
+    downloadXlsx: async () => {
+      const headers = await authHeaders();
+      const res = await fetch(`${BASE}/api/cassa/export.xlsx`, { headers });
+      if (!res.ok) throw new Error(`Download fallito (${res.status})`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cassa-cafezal-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    },
+  },
 
   // Campionature (per lead) + overview for stats
   listSamples: (id) => request(`/opportunities/${id}/samples`),

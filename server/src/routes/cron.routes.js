@@ -8,6 +8,7 @@ import {
   runStoreReminders,
 } from '../services/torrefazione.service.js';
 import { runMonthlyClientReminders } from '../services/clienti.service.js';
+import { runCassaSync } from '../services/cassa.service.js';
 
 const router = Router();
 
@@ -115,6 +116,20 @@ router.get('/store-reminders', storeReminders);
 const clientiMensile = torreHandler(runMonthlyClientReminders);
 router.post('/clienti-mensile', clientiMensile);
 router.get('/clienti-mensile', clientiMensile);
+
+// ── Cassa Tilby: sync vendite giornaliere (default ultimi 3 giorni) ──
+async function cassaSyncHandler(req, res, next) {
+  try {
+    if (!checkSecret(req, res)) return undefined;
+    const days = Number(req.query.days) || 3;
+    const result = await runCassaSync({ days });
+    return res.json({ ok: true, ...result });
+  } catch (e) {
+    return next(e);
+  }
+}
+router.post('/cassa-sync', cassaSyncHandler);
+router.get('/cassa-sync', cassaSyncHandler);
 
 // Weekday dispatcher (Mon recap / Fri reminders). `?force=1` runs both now.
 async function weeklyDispatch(req, res, next) {

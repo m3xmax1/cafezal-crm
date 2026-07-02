@@ -13,6 +13,7 @@ import clientiRoutes from './routes/clienti.routes.js';
 import statsRoutes from './routes/stats.routes.js';
 import eventiRoutes from './routes/eventi.routes.js';
 import caffeVerdeRoutes from './routes/caffeverde.routes.js';
+import cassaRoutes from './routes/cassa.routes.js';
 
 export function createApp() {
   const app = express();
@@ -39,6 +40,7 @@ export function createApp() {
   app.use('/api/clienti', clientiRoutes);
   app.use('/api/eventi', eventiRoutes);
   app.use('/api/caffe-verde', caffeVerdeRoutes);
+  app.use('/api/cassa', cassaRoutes);
   app.use('/api/stats', statsRoutes);
   app.use('/api/cron', cronRoutes);
 

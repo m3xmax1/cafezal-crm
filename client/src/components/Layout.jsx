@@ -20,7 +20,10 @@ export default function Layout({ children, right }) {
       { to: '/ordini', label: 'I miei ordini' },
     ];
   } else if (isFinance && !isAdmin) {
-    navLinks = [{ to: '/finance', label: 'Finance', end: true }];
+    navLinks = [
+      { to: '/finance', label: 'Finance', end: true },
+      { to: '/cassa', label: 'Cassa' },
+    ];
   } else if (isTorrefazione && !isAdmin) {
     navLinks = [
       { to: '/ordini', label: 'Ordini', end: true },
@@ -49,7 +52,7 @@ export default function Layout({ children, right }) {
         { to: '/stat-torrefazione', label: 'Stat. torref.' },
       );
     else navLinks.push({ to: '/ordini', label: 'I miei ordini' }); // commerciale: traccia i suoi ordini B2B
-    if (isAdmin) navLinks.push({ to: '/finance', label: 'Finance' });
+    if (isAdmin) navLinks.push({ to: '/finance', label: 'Finance' }, { to: '/cassa', label: 'Cassa' });
   }
   const roleLabel = isAdmin ? 'Admin' : isTorrefazione ? 'Torrefazione' : isFinance ? 'Finance' : store || 'Commerciale';
 
