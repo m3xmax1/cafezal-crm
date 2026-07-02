@@ -26,6 +26,14 @@ export async function update(req, res, next) {
   }
 }
 
+export async function remove(req, res, next) {
+  try {
+    res.json(await service.deleteOrdine(req.user, req.params.id));
+  } catch (e) {
+    next(e);
+  }
+}
+
 export async function correct(req, res, next) {
   try {
     res.json(await service.correctOrdine(req.user, req.params.id, req.body || {}));

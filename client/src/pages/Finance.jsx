@@ -303,7 +303,10 @@ export default function Finance() {
                     <h3 className="text-lg font-bold text-slate-900">{cur.ragione_sociale || cur.cliente_nome || '—'}</h3>
                     <div className="text-[11px] text-slate-400">Ordine #{cur.id} · {fmtDate(cur.data_ordine)} · {cur.stato}</div>
                   </div>
-                  <div className="text-2xl font-bold text-slate-900">{eur(cur.totale)}</div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-slate-900">{eur(cur.totale)}</div>
+                    {Number(cur.costo_trasporto) > 0 && <div className="text-[10px] text-slate-400">incl. trasporto {eur(cur.costo_trasporto)}</div>}
+                  </div>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-slate-100 pt-3 text-sm">
                   <Field k="P. IVA / C.F." v={cur.piva_cf} />
@@ -346,6 +349,7 @@ export default function Finance() {
                   </div>
                   <div className="text-right">
                     <div className="text-lg font-bold text-slate-900">{eur(o.totale)}</div>
+                    {Number(o.costo_trasporto) > 0 && <div className="text-[10px] text-slate-400">incl. trasporto {eur(o.costo_trasporto)}</div>}
                     <button
                       onClick={() => toggleFatturato(o)}
                       className={`mt-1 block rounded-md px-2.5 py-1 text-[11px] font-semibold ${o.fatturato ? 'border border-slate-300 text-slate-600 hover:bg-slate-50' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}

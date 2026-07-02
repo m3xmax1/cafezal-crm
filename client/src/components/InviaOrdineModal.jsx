@@ -39,6 +39,7 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
     indirizzo_sede_legale: opp?.indirizzo_sede_legale || '',
     indirizzo_consegna: opp?.indirizzo_spedizione || opp?.citta || '',
     data_consegna: '',
+    costo_trasporto: '',
     note: '',
   });
   const setS = (k, v) => setShip((s) => ({ ...s, [k]: v }));
@@ -152,6 +153,7 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
         indirizzo_sede_legale: ship.indirizzo_sede_legale || null,
         indirizzo_consegna: ship.indirizzo_consegna || null,
         data_consegna: ship.data_consegna || null,
+        costo_trasporto: ship.costo_trasporto === '' ? null : Number(ship.costo_trasporto),
         note: ship.note || null,
         righe,
       });
@@ -326,10 +328,17 @@ export default function InviaOrdineModal({ opp, onClose, onCreated }) {
                   <input className={fieldCls} placeholder="Persona di riferimento" value={ship.persona} onChange={(e) => setS('persona', e.target.value)} />
                   <textarea rows="2" className={fieldCls} placeholder="Indirizzo sede legale *" value={ship.indirizzo_sede_legale} onChange={(e) => setS('indirizzo_sede_legale', e.target.value)} />
                   <textarea rows="2" className={fieldCls} placeholder="Indirizzo spedizione *" value={ship.indirizzo_consegna} onChange={(e) => setS('indirizzo_consegna', e.target.value)} />
-                  <div>
-                    <label className="text-xs text-slate-500">Data consegna desiderata</label>
-                    <input type="date" className={fieldCls} value={ship.data_consegna} onChange={(e) => setS('data_consegna', e.target.value)} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-slate-500">Data consegna desiderata</label>
+                      <input type="date" className={fieldCls} value={ship.data_consegna} onChange={(e) => setS('data_consegna', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500">Costo di trasporto (€)</label>
+                      <input type="number" min="0" step="0.01" className={fieldCls} placeholder="0 = gratuito" value={ship.costo_trasporto} onChange={(e) => setS('costo_trasporto', e.target.value)} />
+                    </div>
                   </div>
+                  <p className="-mt-1 text-[11px] text-slate-400">🚚 Prima consegna gratuita — indica il costo solo se va addebitato (si somma al totale dell'ordine).</p>
                   <textarea rows="2" className={fieldCls} placeholder="Note per la torrefazione" value={ship.note} onChange={(e) => setS('note', e.target.value)} />
                 </div>
               </div>

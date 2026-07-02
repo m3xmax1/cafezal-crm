@@ -101,6 +101,12 @@ function OrdineCard({ o, canManage, onPatch, compact, onCorrect }) {
                   <td className="py-0.5 text-right text-slate-400">×{r.quantita}</td>
                 </tr>
               ))}
+              {Number(o.costo_trasporto) > 0 && (
+                <tr>
+                  <td className="py-0.5 font-medium text-slate-600">🚚 Trasporto</td>
+                  <td className="py-0.5 text-right text-slate-400">€ {Number(o.costo_trasporto).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              )}
             </tbody>
           </table>
           {canManage && (
@@ -126,6 +132,53 @@ function OrdineCard({ o, canManage, onPatch, compact, onCorrect }) {
   );
 }
 
+// Riga compatta per lo storico degli store: tutto l'ordine su una riga,
+// espandibile per righe/dettagli. Elimina possibile solo finché è "Ricevuto".
+function OrdineRiga({ o, onCorrect, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const m = STATO_META[o.stato] || {};
+  const righeTxt = (o.ordini_righe || []).map((r) => `${r.nome_caffe} ×${r.quantita}`).join(' · ');
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="flex items-center gap-2 px-3 py-2">
+        <span className={`h-2 w-2 shrink-0 rounded-full ${m.dot || 'bg-slate-300'}`} />
+        <span className="w-12 shrink-0 text-xs font-semibold text-slate-500">#{o.id}</span>
+        <span className="w-16 shrink-0 text-xs text-slate-500">{fmtDate(o.data_ordine)}</span>
+        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${m.badge || ''}`}>{m.label || o.stato}</span>
+        <span className="min-w-0 flex-1 truncate text-xs text-slate-600" title={righeTxt}>{righeTxt || '—'}</span>
+        <span className="hidden w-16 shrink-0 text-right text-xs text-slate-400 sm:block">{kg(o.peso_totale_kg)}</span>
+        {o.data_consegna_prevista && (
+          <span className="hidden shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 md:inline">📦 {fmtDate(o.data_consegna_prevista)}</span>
+        )}
+        {o.stato === 'problema' && (
+          <button onClick={() => onCorrect(o)} className="shrink-0 rounded-md bg-rose-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-rose-700">✏️ Correggi</button>
+        )}
+        {o.stato === 'ricevuto' && (
+          <button onClick={() => onDelete(o)} title="Elimina ordine (possibile finché non è preso in carico)" className="shrink-0 rounded-md border border-rose-200 px-2 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-50">🗑</button>
+        )}
+        <button onClick={() => setOpen((v) => !v)} className="shrink-0 rounded-md px-1.5 py-1 text-xs text-blue-600 hover:underline">{open ? '▲' : '▼'}</button>
+      </div>
+      {open && (
+        <div className="border-t border-slate-100 px-3 py-2">
+          <table className="w-full text-xs">
+            <tbody>
+              {(o.ordini_righe || []).map((r) => (
+                <tr key={r.id}>
+                  <td className="py-0.5 text-slate-600">{r.nome_caffe}</td>
+                  <td className="py-0.5 text-right text-slate-400">×{r.quantita}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {o.problema_nota && <div className="mt-1.5 rounded bg-rose-50 px-2 py-1 text-[11px] text-rose-800"><span className="font-semibold">⚠ Problema:</span> {o.problema_nota}</div>}
+          {o.note && <div className="mt-1.5 rounded bg-slate-50 px-2 py-1 text-[11px] text-slate-600">{o.note}</div>}
+          {(o.ddt || o.tracking) && <div className="mt-1 text-[11px] text-slate-500">{o.ddt && `DDT: ${o.ddt} `}{o.tracking && `· ${o.tracking}`}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Ordini() {
   const { store, isAdmin, isTorrefazione } = useAuth();
   const canManage = isAdmin || isTorrefazione;
@@ -134,6 +187,7 @@ export default function Ordini() {
   const [error, setError] = useState('');
   const [view, setView] = useState('pipeline'); // pipeline | archivio
   const [correcting, setCorrecting] = useState(null); // ordine in correzione (store)
+  const [q, setQ] = useState(''); // ricerca (storico store)
 
   function load() {
     setLoading(true);
@@ -159,16 +213,42 @@ export default function Ordini() {
   const archiviati = useMemo(() => items.filter((o) => o.stato === 'archiviato'), [items]);
   const attivi = COLS.reduce((n, s) => n + byStato[s].length, 0);
 
-  // ── Store: lista con correzione degli ordini segnalati ──
+  // ── Store: pila unica a riga singola, con ricerca ed eliminazione ──
   if (store) {
     const daCorreggere = items.filter((o) => o.stato === 'problema');
     const inArrivo = items.filter((o) => o.stato === 'spedito');
+    const term = q.trim().toLowerCase();
+    const visibili = !term
+      ? items
+      : items.filter((o) => {
+        const righe = (o.ordini_righe || []).map((r) => r.nome_caffe).join(' ');
+        const hay = `#${o.id} ${o.id} ${fmtDate(o.data_ordine)} ${STATO_META[o.stato]?.label || o.stato} ${righe} ${o.note || ''} ${o.ddt || ''} ${o.tracking || ''}`.toLowerCase();
+        return hay.includes(term);
+      });
+    async function eliminaOrdine(o) {
+      if (!window.confirm(`Eliminare l'ordine #${o.id}? Il magazzino verrà ri-accreditato.`)) return;
+      try {
+        await api.ordini.remove(o.id);
+        setItems((cur) => cur.filter((x) => x.id !== o.id));
+      } catch (e) {
+        setError(e.message);
+      }
+    }
     return (
       <Layout>
-        <div className="mb-4">
-          <h2 className="text-xl font-bold tracking-tight text-slate-900">I miei ordini</h2>
-          <p className="text-sm text-slate-500">Storico e stato dei tuoi ordini.</p>
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold tracking-tight text-slate-900">I miei ordini</h2>
+            <p className="text-sm text-slate-500">Storico e stato dei tuoi ordini.</p>
+          </div>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Cerca per caffè, nº ordine, data, stato…"
+            className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+          />
         </div>
+        {error && <div className="mb-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
         {daCorreggere.length > 0 && (
           <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
             ⚠ <strong>{daCorreggere.length} ordine/i da correggere</strong> — la torrefazione ha segnalato un problema. Usa “Correggi e re-invia”.
@@ -176,17 +256,19 @@ export default function Ordini() {
         )}
         {inArrivo.length > 0 && (
           <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-            🚚 <strong>{inArrivo.length} ordine/i in arrivo</strong> — spediti dalla torrefazione (vedi la consegna prevista sulla card).
+            🚚 <strong>{inArrivo.length} ordine/i in arrivo</strong> — spediti dalla torrefazione (apri la riga per la consegna prevista).
           </div>
         )}
         {loading ? (
           <div className="grid place-items-center py-20 text-slate-400">Caricamento…</div>
-        ) : items.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center text-sm text-slate-400">Nessun ordine.</div>
+        ) : visibili.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center text-sm text-slate-400">
+            {term ? 'Nessun ordine corrisponde alla ricerca.' : 'Nessun ordine.'}
+          </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {items.map((o) => (
-              <OrdineCard key={o.id} o={o} canManage={false} onPatch={onPatch} onCorrect={setCorrecting} />
+          <div className="flex flex-col gap-1.5">
+            {visibili.map((o) => (
+              <OrdineRiga key={o.id} o={o} onCorrect={setCorrecting} onDelete={eliminaOrdine} />
             ))}
           </div>
         )}

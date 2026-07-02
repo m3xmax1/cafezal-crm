@@ -135,6 +135,10 @@ export async function createOrdine(user, payload) {
   const { prodMap, lineRows, needKg, totale, pesoTot, shortfalls } = await buildLines(righe);
   if (!lineRows.length) throw httpError('Nessuna riga valida nell\'ordine', 400);
 
+  // Costo di trasporto (solo B2B): prima consegna gratuita, poi il commerciale
+  // lo indica se va addebitato. Entra nel totale dell'ordine.
+  const costoTrasporto = !user.store && Number(payload.costo_trasporto) > 0 ? r2(payload.costo_trasporto) : null;
+
   const { data: ord, error: oerr } = await db
     .from('ordini')
     .insert({
@@ -149,7 +153,8 @@ export async function createOrdine(user, payload) {
       data_consegna: payload.data_consegna || null,
       stato: 'ricevuto',
       note: composeNote(shortfalls, payload.note),
-      totale,
+      costo_trasporto: costoTrasporto,
+      totale: r2(totale + (costoTrasporto || 0)),
       peso_totale_kg: pesoTot,
       created_by: user.commerciale || user.store || user.email,
       // Snapshot fiscale per la fattura (congelato al momento dell'invio).
@@ -193,6 +198,11 @@ export async function updateOrdine(user, id, payload) {
     row[k] = typeof payload[k] === 'boolean' ? payload[k] : payload[k] || null;
   }
   if (row.fatturato !== undefined) row.fatturato_at = row.fatturato ? new Date().toISOString() : null;
+  // Appena fatturato, un ordine "spedito" esce dalla pipeline → archiviato.
+  if (row.fatturato === true && row.stato === undefined) {
+    const { data: cur } = await db.from('ordini').select('stato').eq('id', id).maybeSingle();
+    if (cur?.stato === 'spedito') row.stato = 'archiviato';
+  }
   // Flagging a problem without a reason still works; clearing the problem state
   // (any non-problema status) wipes a stale problem note.
   if (row.stato && row.stato !== 'problema') row.problema_nota = null;
@@ -200,6 +210,50 @@ export async function updateOrdine(user, id, payload) {
   const { data, error } = await db.from('ordini').update(row).eq('id', id).select('*, negozi(nome), ordini_righe(*)').single();
   if (error) throw error;
   return data;
+}
+
+/**
+ * Elimina un ordine appena inviato: il locale può cancellare SOLO i propri
+ * ordini ancora in "ricevuto" (non lavorati); l'admin può eliminare anche
+ * oltre. Il magazzino viene ri-accreditato dei kg delle righe.
+ */
+export async function deleteOrdine(user, id) {
+  const { data: existing, error: e0 } = await db
+    .from('ordini')
+    .select('*, ordini_righe(*)')
+    .eq('id', id)
+    .maybeSingle();
+  if (e0) throw e0;
+  if (!existing) throw httpError('Ordine non trovato', 404);
+
+  if (user.store) {
+    const neg = await negozioByName(user.store);
+    if (!neg || existing.negozio_id !== neg.id) throw httpError('Non autorizzato', 403);
+    if (existing.stato !== 'ricevuto') {
+      throw httpError('Puoi eliminare solo ordini non ancora presi in carico (stato "Ricevuto")', 400);
+    }
+  } else if (!user.isAdmin) {
+    throw httpError('Non autorizzato', 403);
+  }
+
+  // Ri-accredita il magazzino (l'invio lo aveva scalato).
+  const backKg = {};
+  for (const r of existing.ordini_righe || []) {
+    backKg[r.prodotto_id] = (backKg[r.prodotto_id] || 0) + (Number(r.peso_kg) || 0) * (Number(r.quantita) || 0);
+  }
+  for (const pid of Object.keys(backKg)) {
+    const { data: pcur } = await db.from('prodotti').select('giacenza_kg').eq('id', pid).maybeSingle();
+    if (!pcur) continue;
+    await db
+      .from('prodotti')
+      .update({ giacenza_kg: r2((Number(pcur.giacenza_kg) || 0) + backKg[pid]), updated_at: new Date().toISOString() })
+      .eq('id', pid);
+  }
+
+  await db.from('ordini_righe').delete().eq('ordine_id', id);
+  const { error } = await db.from('ordini').delete().eq('id', id);
+  if (error) throw error;
+  return { ok: true, id: existing.id };
 }
 
 /**
@@ -263,7 +317,7 @@ export async function correctOrdine(user, id, payload) {
       problema_nota: null,
       note: composeNote(shortfalls, userNote),
       data_consegna: payload.data_consegna !== undefined ? payload.data_consegna || null : existing.data_consegna,
-      totale,
+      totale: r2(totale + (Number(existing.costo_trasporto) || 0)),
       peso_totale_kg: pesoTot,
     })
     .eq('id', id)
